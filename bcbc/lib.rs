@@ -6,9 +6,6 @@ pub type TupleItemId = u8;
 mod typeid;
 pub use typeid::*;
 
-pub mod legacy;
-pub use legacy::*;
-
 num_enum! {
     pub enum Tag {
         Unknown   = 0x00,
@@ -29,11 +26,6 @@ num_enum! {
         Struct    = 0x0f,
         Type      = 0x10,
         TypeId    = 0x11,
-        ObjectRef = 0x12,
-        Timestamp = 0x13,
-        UInt8     = 0x14,
-        UInt16    = 0x15,
-        UInt32    = 0x16,
     } as u8 else Error::Tag
 }
 
@@ -64,11 +56,6 @@ num_enum! {
         Alias     = 0x5,
         Type      = 0x6,
         TypeId    = 0x7,
-        ObjectRef = 0x8,
-        Timestamp = 0x9,
-        UInt8     = 0xa,
-        UInt16    = 0xb,
-        UInt32    = 0xc,
     } as u8 else Error::LTag
 }
 
@@ -97,12 +84,6 @@ pub enum Type {
 
     Type,
     TypeId,
-    ObjectRef,
-    Timestamp,
-
-    UInt8,
-    UInt16,
-    UInt32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -128,12 +109,6 @@ pub enum Value {
 
     Type(Type),
     TypeId(TypeId),
-    ObjectRef(ObjectRef),
-    Timestamp(Timestamp),
-
-    UInt8(u8),
-    UInt16(u16),
-    UInt32(u32),
 }
 
 pub const EXT8: u8 = 0xc;

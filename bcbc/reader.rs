@@ -65,10 +65,6 @@ impl<'a> Reader<'a> {
         self.bytes_sized().map(u64::from_be_bytes)
     }
 
-    fn i64(&mut self) -> Result<i64> {
-        self.bytes_sized().map(i64::from_be_bytes)
-    }
-
     fn typeid(&mut self) -> Result<TypeId> {
         let h8 = self.u8()?;
         Ok(match h8 {
@@ -99,11 +95,6 @@ impl<'a> Reader<'a> {
             Tag::Bytes => Type::Bytes,
             Tag::Type => Type::Type,
             Tag::TypeId => Type::TypeId,
-            Tag::ObjectRef => Type::ObjectRef,
-            Tag::Timestamp => Type::Timestamp,
-            Tag::UInt8 => Type::UInt8,
-            Tag::UInt16 => Type::UInt16,
-            Tag::UInt32 => Type::UInt32,
 
             Tag::Option => {
                 let t = self.ty()?;
@@ -226,28 +217,6 @@ impl<'a> Reader<'a> {
                     LTag::TypeId => {
                         let r = self.typeid()?;
                         Value::TypeId(r)
-                    },
-                    LTag::ObjectRef => {
-                        let ot = self.u16()?;
-                        let oid = self.u64()?;
-                        Value::ObjectRef(ObjectRef { ot, oid })
-                    },
-                    LTag::Timestamp => {
-                        let secs = self.i64()?;
-                        let nanos = self.u32()?;
-                        Value::Timestamp(Timestamp { secs, nanos })
-                    },
-                    LTag::UInt8 => {
-                        let u = self.u8()?;
-                        Value::UInt8(u)
-                    },
-                    LTag::UInt16 => {
-                        let u = self.u16()?;
-                        Value::UInt16(u)
-                    },
-                    LTag::UInt32 => {
-                        let u = self.u32()?;
-                        Value::UInt32(u)
                     },
                 }
             },

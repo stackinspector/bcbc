@@ -37,10 +37,6 @@ impl Writer {
         self.bytes(n.to_be_bytes());
     }
 
-    fn i64(&mut self, n: i64) {
-        self.bytes(n.to_be_bytes());
-    }
-
     fn typeid(&mut self, id: &TypeId) {
         // TODO(styling): as_h8 or in match blocks?
         self.u8(id.as_h8());
@@ -67,12 +63,7 @@ impl Writer {
             Type::String |
             Type::Bytes |
             Type::Type |
-            Type::TypeId |
-            Type::ObjectRef |
-            Type::Timestamp |
-            Type::UInt8 |
-            Type::UInt16 |
-            Type::UInt32 => {},
+            Type::TypeId => {},
 
             Type::Option(t) |
             Type::List(t) => {
@@ -261,30 +252,6 @@ impl Writer {
             Value::TypeId(r) => {
                 self.with_ltag(htag, LTag::TypeId);
                 self.typeid(r);
-
-            },
-            Value::ObjectRef(ObjectRef { ot, oid }) => {
-                self.with_ltag(htag, LTag::ObjectRef);
-                self.u16(*ot);
-                self.u64(*oid);
-
-            },
-            Value::Timestamp(Timestamp { secs, nanos }) => {
-                self.with_ltag(htag, LTag::Timestamp);
-                self.i64(*secs);
-                self.u32(*nanos);
-
-            },
-            Value::UInt8(u) => {
-                self.u8(*u);
-
-            },
-            Value::UInt16(u) => {
-                self.u16(*u);
-
-            },
-            Value::UInt32(u) => {
-                self.u32(*u);
 
             },
         }

@@ -21,11 +21,6 @@ impl Type {
             Type::Struct(..) => Tag::Struct,
             Type::Type       => Tag::Type,
             Type::TypeId     => Tag::TypeId,
-            Type::ObjectRef  => Tag::ObjectRef,
-            Type::Timestamp  => Tag::Timestamp,
-            Type::UInt8      => Tag::UInt8,
-            Type::UInt16     => Tag::UInt16,
-            Type::UInt32     => Tag::UInt32,
         }
     }
 }
@@ -50,11 +45,6 @@ impl Value {
             Value::Struct(..)    => Tag::Struct,
             Value::Type(..)      => Tag::Type,
             Value::TypeId(..)    => Tag::TypeId,
-            Value::ObjectRef(..) => Tag::ObjectRef,
-            Value::Timestamp(..) => Tag::Timestamp,
-            Value::UInt8(..)     => Tag::UInt8,
-            Value::UInt16(..)    => Tag::UInt16,
-            Value::UInt32(..)    => Tag::UInt32,
         }
     }
 
@@ -77,12 +67,7 @@ impl Value {
             Value::Option(..)    |
             Value::Alias(..)     |
             Value::Type(..)      |
-            Value::TypeId(..)    |
-            Value::ObjectRef(..) |
-            Value::Timestamp(..) |
-            Value::UInt8(..)     |
-            Value::UInt16(..)    |
-            Value::UInt32(..)    => HTag::L4,
+            Value::TypeId(..)    => HTag::L4,
         }
     }
 
@@ -105,11 +90,6 @@ impl Value {
             Value::Struct(r, ..) => Type::Struct(*r),
             Value::Type(..) => Type::Type,
             Value::TypeId(..) => Type::TypeId,
-            Value::ObjectRef(..) => Type::ObjectRef,
-            Value::Timestamp(..) => Type::Timestamp,
-            Value::UInt8(..) => Type::UInt8,
-            Value::UInt16(..) => Type::UInt16,
-            Value::UInt32(..) => Type::UInt32,
         }
     }
 }
@@ -261,46 +241,6 @@ impl Value {
 
     pub fn into_type_id(self) -> TypeId {
         if let Value::TypeId(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_object_ref(self) -> ObjectRef {
-        if let Value::ObjectRef(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_timestamp(self) -> Timestamp {
-        if let Value::Timestamp(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_uint8(self) -> u8 {
-        if let Value::UInt8(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_uint16(self) -> u16 {
-        if let Value::UInt16(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_uint32(self) -> u32 {
-        if let Value::UInt32(v) = self {
             v
         } else {
             unreachable!()

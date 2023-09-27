@@ -52,12 +52,10 @@ fn test() {
             Value::Enum(TypeId::Std(StdId { schema: 0xfe, id: 0x00aa }), 163, Box::new(Value::UInt(12))),
             Value::Type(Type::List(Box::new(Type::List(Box::new(Type::Struct(TypeId::Anonymous)))))),
             Value::TypeId(TypeId::Hash(HashId { hash: hex!("fedcba98765432") })),
-            Value::ObjectRef(ObjectRef { ot: 0x0123, oid: 0x0123456789abcdef }),
-            Value::Timestamp(Timestamp { secs: 0x000000002920d7f6, nanos: 0x3161fcd4 }),
             Value::Option(Type::Tuple(vec![Type::Int, Type::Unit, Type::Unknown]), Box::new(Some(Value::Tuple(vec![Value::Int(9), Value::Unit, Value::Bool(true)])))),
         ]),
         hex!("
-        8c 12
+        8c 10
         00
         01
         1e 00ed5be1
@@ -73,8 +71,6 @@ fn test() {
         ac a3 fe 00aa 2c 0c
         06 09 09 0f 00
         07 ff fedcba98765432
-        08 0123 0123456789abcdef
-        09 000000002920d7f6 3161fcd4
         04  0b 03 03 01 00  83 1c 12 00 02
         ")
     )
