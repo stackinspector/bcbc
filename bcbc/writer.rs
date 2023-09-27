@@ -49,7 +49,7 @@ impl Writer {
                 self.u16(std_id.id());
             },
             TypeId::Hash(hash_id) => {
-                self.u64(hash_id.hash());
+                self.bytes(hash_id.hash());
             },
             TypeId::Anonymous => {},
         }

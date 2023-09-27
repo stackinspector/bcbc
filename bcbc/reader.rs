@@ -73,7 +73,7 @@ impl<'a> Reader<'a> {
         let h8 = self.u8()?;
         Ok(match h8 {
             SCHEMA_HASH => {
-                let hash = self.u64()?;
+                let hash = self.bytes_sized()?;
                 TypeId::Hash(HashId { hash })
             },
             SCHEMA_ANONYMOUS => {
