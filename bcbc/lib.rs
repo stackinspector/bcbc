@@ -3,6 +3,9 @@ use foundations::{error_enum, num_enum};
 pub type EnumVariantId = u64;
 pub type TupleItemId = u8;
 
+mod typeid;
+pub use typeid::*;
+
 pub mod legacy;
 pub use legacy::*;
 

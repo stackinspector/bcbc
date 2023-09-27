@@ -72,14 +72,17 @@ impl<'a> Reader<'a> {
     fn typeid(&mut self) -> Result<TypeId> {
         let h8 = self.u8()?;
         Ok(match h8 {
-            0xff => {
-                let hash = self.bytes_sized()?;
-                TypeId::Hash(hash)
+            SCHEMA_HASH => {
+                let hash = self.u64()?;
+                TypeId::Hash(HashId { hash })
             },
-            h8 => {
-                let l8 = self.u8()?;
-                TypeId::from_u16_unchecked(u16::from_be_bytes([h8, l8]))
+            SCHEMA_ANONYMOUS => {
+                TypeId::Anonymous
             },
+            schema => {
+                let id = self.u16()?;
+                TypeId::Std(StdId { schema, id })
+            }
         })
     }
 

@@ -41,15 +41,17 @@ impl Writer {
         self.bytes(n.to_be_bytes());
     }
 
-    fn typeid(&mut self, r: &TypeId) {
-        match r {
-            TypeId::Std(stdid) => {
-                self.u16(stdid.to_u16());
+    fn typeid(&mut self, id: &TypeId) {
+        // TODO(styling): as_h8 or in match blocks?
+        self.u8(id.as_h8());
+        match id {
+            TypeId::Std(std_id) => {
+                self.u16(std_id.id());
             },
-            TypeId::Hash(hash) => {
-                self.u8(0xff);
-                self.bytes(hash);
-            }
+            TypeId::Hash(hash_id) => {
+                self.u64(hash_id.hash());
+            },
+            TypeId::Anonymous => {},
         }
     }
 

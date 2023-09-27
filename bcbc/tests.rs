@@ -1,5 +1,5 @@
 use hex_literal::hex;
-use super::*;
+use crate::*;
 
 #[test]
 fn test() {
@@ -46,12 +46,12 @@ fn test() {
             Value::Bytes(b"(\x00)".to_vec()),
             Value::Option(Type::String, Box::new(None)),
             Value::Option(Type::Bool, Box::new(Some(Value::Bool(true)))),
-            Value::Alias(TypeId::Hash(hex!("fedcba98765432")), Box::new(Value::Bytes(b"\xff".to_vec()))),
-            Value::CEnum(TypeId::from_u16(0x5f50), 11),
-            Value::Enum(TypeId::from_u16(0x5f49), 5, Box::new(Value::Int(5))),
-            Value::Enum(TypeId::from_u16(0x00aa), 163, Box::new(Value::UInt(12))),
-            Value::Type(Type::List(Box::new(Type::List(Box::new(Type::Struct(TypeId::from_u16(0xfe50))))))),
-            Value::TypeId(TypeId::Hash(hex!("fedcba98765432"))),
+            Value::Alias(TypeId::Hash(HashId { hash: 0xfedcba9876543210 }), Box::new(Value::Bytes(b"\xff".to_vec()))),
+            Value::CEnum(TypeId::Std(StdId { schema: 0x01, id: 0x5f50 }), 11),
+            Value::Enum(TypeId::Std(StdId { schema: 0x01, id: 0x5f49 }), 5, Box::new(Value::Int(5))),
+            Value::Enum(TypeId::Std(StdId { schema: 0xfe, id: 0x00aa }), 163, Box::new(Value::UInt(12))),
+            Value::Type(Type::List(Box::new(Type::List(Box::new(Type::Struct(TypeId::Anonymous)))))),
+            Value::TypeId(TypeId::Hash(HashId { hash: 0xfedcba9876543210 })),
             Value::ObjectRef(ObjectRef { ot: 0x0123, oid: 0x0123456789abcdef }),
             Value::Timestamp(Timestamp { secs: 0x000000002920d7f6, nanos: 0x3161fcd4 }),
             Value::Option(Type::Tuple(vec![Type::Int, Type::Unit, Type::Unknown]), Box::new(Some(Value::Tuple(vec![Value::Int(9), Value::Unit, Value::Bool(true)])))),
@@ -67,12 +67,12 @@ fn test() {
         53 280029
         03 06 
         04 02 02
-        05 ff fedcba98765432 51 ff
-        9b 5f50
-        a5 5f49 1a
-        ac a3 00aa 2c 0c
-        06 09 09 0f fe50
-        07 ff fedcba98765432
+        05 ff fedcba9876543210 51 ff
+        9b 01 5f50
+        a5 01 5f49 1a
+        ac a3 fe 00aa 2c 0c
+        06 09 09 0f 00
+        07 ff fedcba9876543210
         08 0123 0123456789abcdef
         09 000000002920d7f6 3161fcd4
         04  0b 03 03 01 00  83 1c 12 00 02
