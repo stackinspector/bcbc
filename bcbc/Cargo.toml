@@ -17,6 +17,7 @@ foundations = { git = "https://github.com/Berylsoft/foundations", features = [
     "bytes-read",
     "num-compress",
 
+    "num-compress-macros",
     "error-enum",
     "num-enum",
     "byterepr-macros",

@@ -1,4 +1,4 @@
-use foundations::{num_compress::*, usize_casting::*};
+use foundations::{num_compress::*, usize_casting::*, trailing_zero_byte};
 use super::*;
 
 struct Writer {
@@ -139,7 +139,7 @@ impl Writer {
     }
 
     fn with_fvar(&mut self, htag: HTag, f: u64) {
-        let len = trailing_zero_byte(f);
+        let len = trailing_zero_byte!(f);
         self.with_l4(htag, len as u8);
         let buf = f.to_be_bytes();
         self.bytes(&buf[0..len]);
