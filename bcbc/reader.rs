@@ -136,20 +136,27 @@ impl<'a> Reader<'a> {
         })
     }
 
-    fn bytevar_buf(&mut self, h4: H4) -> Result<[u8; 8]> {
-        let pos = h4.to_bytevar_pos()?;
+    fn bytevar_u_buf(&mut self, h4: H4) -> Result<[u8; 8]> {
+        let pos = h4.to_bytevar_u_pos()?;
         let mut buf = [0; 8];
         self.read_exact(&mut buf[pos..])?;
         Ok(buf)
     }
 
+    fn bytevar_f_buf(&mut self, h4: H4) -> Result<[u8; 8]> {
+        let pos = h4.to_bytevar_f_pos()?;
+        let mut buf = [0; 8];
+        self.read_exact(&mut buf[..pos])?;
+        Ok(buf)
+    }
+
     fn extvar(&mut self, l4: L4) -> Result<u64> {
-        Ok(match l4 as u8 {
+        Ok(match l4 {
             EXT8 => self.u8()? as u64,
             EXT16 => self.u16()? as u64,
             EXT32 => self.u32()? as u64,
             EXT64 => self.u64()?,
-            s => s as u64,
+            s => (s as u8) as u64,
         })
     }
 
@@ -235,20 +242,20 @@ impl<'a> Reader<'a> {
                     ) => {
                         match l4 {
                             $(L4::$uname => {
-                                let buf = self.bytevar_buf(h4)?;
+                                let buf = self.bytevar_u_buf(h4)?;
                                 const NPOS: usize = 8 - (($uty::BITS as usize) / 8);
                                 let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
                                 Value::$uname(<$uty>::from_be_bytes(buf))
                             })*,
                             $(L4::$iname => {
-                                let buf = self.bytevar_buf(h4)?;
+                                let buf = self.bytevar_u_buf(h4)?;
                                 const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
                                 let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
                                 let u = <$iuty>::from_be_bytes(buf);
                                 Value::$iname($zigzag_fn(u))
                             })*,
                             $(L4::$fname => {
-                                let buf = self.bytevar_buf(h4)?;
+                                let buf = self.bytevar_f_buf(h4)?;
                                 const NPOS: usize = ($fty::BITS as usize) / 8;
                                 let buf = buf[..NPOS].try_into().map_err(|_| Error::BytevarSlicing)?;
                                 Value::$fname(<$fty>::from_be_bytes(buf))

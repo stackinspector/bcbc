@@ -63,7 +63,7 @@ impl H4 {
         (*self as u8) < 0x8
     }
 
-    pub const fn to_bytevar_pos(self) -> Result<usize> {
+    pub const fn to_bytevar_u_pos(self) -> Result<usize> {
         Ok(match self {
             H4::N1 => 7,
             H4::N2 => 6,
@@ -73,6 +73,20 @@ impl H4 {
             H4::N6 => 2,
             H4::N7 => 1,
             H4::N8 => 0,
+            _ => return Err(Error::H4ToN(self)),
+        })
+    }
+
+    pub const fn to_bytevar_f_pos(self) -> Result<usize> {
+        Ok(match self {
+            H4::N1 => 1,
+            H4::N2 => 2,
+            H4::N3 => 3,
+            H4::N4 => 4,
+            H4::N5 => 5,
+            H4::N6 => 6,
+            H4::N7 => 7,
+            H4::N8 => 8,
             _ => return Err(Error::H4ToN(self)),
         })
     }
@@ -206,10 +220,10 @@ pub enum Value {
     TypeId(TypeId),
 }
 
-pub const EXT8: u8 = 0xc;
-pub const EXT16: u8 = 0xd;
-pub const EXT32: u8 = 0xe;
-pub const EXT64: u8 = 0xf;
+pub const EXT8:  L4 = L4::EXT2; // 0xc
+pub const EXT16: L4 = L4::EXT3; // 0xd
+pub const EXT32: L4 = L4::EXT4; // 0xe
+pub const EXT64: L4 = L4::EXT5; // 0xf
 
 pub trait Schema {
     const ID: TypeId;
