@@ -1,24 +1,21 @@
-use foundations::{num_compress::*, usize_casting::*, bytes_read::*};
+use foundations::{num_compress::*, bytes_read::*};
 use super::*;
 
-error_enum! {
-    #[derive(Debug)]
-    pub enum Error {
-        FloatL4(u8),
-        TooShort((usize, usize)),
-        TooLong(usize),
-        Tag(u8),
-        HTag(u8),
-        LTag(u8),
-    } convert {
-        Utf8 => std::string::FromUtf8Error,
-    }
+#[inline]
+pub fn u64_usize(n: u64) -> Result<usize> {
+    n.try_into().map_err(|_| Error::Size(n))
 }
-
-type Result<T> = core::result::Result<T, Error>;
 
 struct Reader<'a> {
     bytes: &'a [u8],
+}
+
+macro_rules! num_impl {
+    ($($num:tt)*) => {$(
+        fn $num(&mut self) -> Result<$num> {
+            self.bytes_sized().map($num::from_be_bytes)
+        }
+    )*};
 }
 
 impl<'a> Reader<'a> {
@@ -53,16 +50,8 @@ impl<'a> Reader<'a> {
         self.bytes.read_byte().ok_or(Error::TooShort((0, 1)))
     }
 
-    fn u16(&mut self) -> Result<u16> {
-        self.bytes_sized().map(u16::from_be_bytes)
-    }
-
-    fn u32(&mut self) -> Result<u32> {
-        self.bytes_sized().map(u32::from_be_bytes)
-    }
-
-    fn u64(&mut self) -> Result<u64> {
-        self.bytes_sized().map(u64::from_be_bytes)
+    num_impl! {
+        u16 u32 u64
     }
 
     fn typeid(&mut self) -> Result<TypeId> {
@@ -88,9 +77,17 @@ impl<'a> Reader<'a> {
             Tag::Unknown => Type::Unknown,
             Tag::Unit => Type::Unit,
             Tag::Bool => Type::Bool,
-            Tag::Int => Type::Int,
-            Tag::UInt => Type::UInt,
-            Tag::Float => Type::Float,
+            Tag::U8 => Type::U8,
+            Tag::U16 => Type::U16,
+            Tag::U32 => Type::U32,
+            Tag::U64 => Type::U64,
+            Tag::I8 => Type::I8,
+            Tag::I16 => Type::I16,
+            Tag::I32 => Type::I32,
+            Tag::I64 => Type::I64,
+            Tag::F16 => Type::F16,
+            Tag::F32 => Type::F32,
+            Tag::F64 => Type::F64,
             Tag::String => Type::String,
             Tag::Bytes => Type::Bytes,
             Tag::Type => Type::Type,
@@ -139,12 +136,15 @@ impl<'a> Reader<'a> {
         })
     }
 
-    fn with_ltag(&mut self, l4: u8) -> Result<LTag> {
-        Ok(l4.try_into()?)
+    fn bytevar_buf(&mut self, h4: H4) -> Result<[u8; 8]> {
+        let pos = h4.to_bytevar_pos()?;
+        let mut buf = [0; 8];
+        self.read_exact(&mut buf[pos..])?;
+        Ok(buf)
     }
 
-    fn with_uvar(&mut self, l4: u8) -> Result<u64> {
-        Ok(match l4 {
+    fn extvar(&mut self, l4: L4) -> Result<u64> {
+        Ok(match l4 as u8 {
             EXT8 => self.u8()? as u64,
             EXT16 => self.u16()? as u64,
             EXT32 => self.u32()? as u64,
@@ -153,19 +153,8 @@ impl<'a> Reader<'a> {
         })
     }
 
-    fn with_ivar(&mut self, l4: u8) -> Result<i64> {
-        Ok(zigzag_decode(self.with_uvar(l4)?))
-    }
-
-    fn with_szvar(&mut self, l4: u8) -> Result<usize> {
-        Ok(u64_usize(self.with_uvar(l4)?))
-    }
-
-    fn with_fvar(&mut self, l4: u8) -> Result<u64> {
-        if l4 > 8 { return Err(Error::FloatL4(l4)); }
-        let mut buf = [0; 8];
-        self.read_exact(&mut buf[0..l4 as usize])?;
-        Ok(u64::from_be_bytes(buf))
+    fn extszvar(&mut self, l4: L4) -> Result<usize> {
+        Ok(u64_usize(self.extvar(l4)?)?)
     }
 
     fn val_seq(&mut self, size: usize) -> Result<Vec<Value>> {
@@ -188,94 +177,134 @@ impl<'a> Reader<'a> {
     }
 
     fn val(&mut self) -> Result<Value> {
-        let (htag, l4) = to_h4l4(self.u8()?);
-        Ok(match htag.try_into()? {
-            HTag::L4 => {
-                let ltag = self.with_ltag(l4)?;
-                match ltag {
-                    LTag::Unit => Value::Unit,
-                    LTag::True => Value::Bool(true),
-                    LTag::False => Value::Bool(false),
-                    opt @ (LTag::None | LTag::Some) => {
-                        let t = self.ty()?;
-                        let opt = match opt {
-                            LTag::None => None,
-                            LTag::Some => Some(self.val()?),
-                            _ => unreachable!(), // waiting for flow-sensitive typing implemented
-                        };
-                        Value::Option(t, Box::new(opt))
-                    },
-                    LTag::Alias => {
-                        let r = self.typeid()?;
-                        let v = self.val()?;
-                        Value::Alias(r, Box::new(v))
-                    },
-                    LTag::Type => {
-                        let t = self.ty()?;
-                        Value::Type(t)
-                    },
-                    LTag::TypeId => {
-                        let r = self.typeid()?;
-                        Value::TypeId(r)
-                    },
-                }
-            },
-            HTag::Int => {
-                let i = self.with_ivar(l4)?;
-                Value::Int(i)
-            },
-            HTag::UInt => {
-                let u = self.with_uvar(l4)?;
-                Value::UInt(u)
-            },
-            HTag::Float => {
-                let f = self.with_fvar(l4)?;
-                Value::Float(f)
-            },
-            HTag::String => {
-                let len = self.with_szvar(l4)?;
+        let (h4, l4) = to_h4l4(self.u8()?)?;
+        Ok(match h4 {
+            H4::String => {
+                let len = self.extszvar(l4)?;
                 let b = self.bytes(len)?;
                 Value::String(String::from_utf8(b)?)
             },
-            HTag::Bytes => {
-                let len = self.with_szvar(l4)?;
+            H4::Bytes => {
+                let len = self.extszvar(l4)?;
                 let b = self.bytes(len)?;
                 Value::Bytes(b)
             },
-            HTag::List => {
-                let len = self.with_szvar(l4)?;
+            H4::List => {
+                let len = self.extszvar(l4)?;
                 let t = self.ty()?;
                 let s = self.val_seq(len)?;
                 Value::List(t, s)
             },
-            HTag::Map => {
-                let len = self.with_szvar(l4)?;
+            H4::Map => {
+                let len = self.extszvar(l4)?;
                 let tk = self.ty()?;
                 let tv = self.ty()?;
                 let s = self.val_seq_map(len)?;
                 Value::Map((tk, tv), s)
             },
-            HTag::Tuple => {
-                let len = self.with_szvar(l4)?;
+            H4::Tuple => {
+                let len = self.extszvar(l4)?;
                 let s = self.val_seq(len)?;
                 Value::Tuple(s)
             },
-            HTag::CEnum => {
-                let ev = self.with_uvar(l4)?;
+            H4::CEnum => {
+                let ev = self.extvar(l4)?;
                 let r = self.typeid()?;
                 Value::CEnum(r, ev)
             },
-            HTag::Enum => {
-                let ev = self.with_uvar(l4)?;
+            H4::Enum => {
+                let ev = self.extvar(l4)?;
                 let r = self.typeid()?;
                 let v = self.val()?;
                 Value::Enum(r, ev, Box::new(v))
             },
-            HTag::Struct => {
-                let len = self.with_szvar(l4)?;
+            H4::Struct => {
+                let len = self.extszvar(l4)?;
                 let r = self.typeid()?;
                 let s = self.val_seq(len)?;
                 Value::Struct(r, s)
+            },
+            h4 => {
+                macro_rules! numl4_impl {
+                    // TODO(Rust): macro on match arms
+                    (
+                        U {$($uname:ident $uty:tt)*}
+                        I {$($iname:ident $ity:tt $iuty:tt $zigzag_fn:tt)*}
+                        F {$($fname:ident $fty:tt)*}
+                        $($tt:tt)*
+                    ) => {
+                        match l4 {
+                            $(L4::$uname => {
+                                let buf = self.bytevar_buf(h4)?;
+                                const NPOS: usize = 8 - (($uty::BITS as usize) / 8);
+                                let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
+                                Value::$uname(<$uty>::from_be_bytes(buf))
+                            })*,
+                            $(L4::$iname => {
+                                let buf = self.bytevar_buf(h4)?;
+                                const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
+                                let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
+                                let u = <$iuty>::from_be_bytes(buf);
+                                Value::$iname($zigzag_fn(u))
+                            })*,
+                            $(L4::$fname => {
+                                let buf = self.bytevar_buf(h4)?;
+                                const NPOS: usize = ($fty::BITS as usize) / 8;
+                                let buf = buf[..NPOS].try_into().map_err(|_| Error::BytevarSlicing)?;
+                                Value::$fname(<$fty>::from_be_bytes(buf))
+                            })*,
+                            $($tt)*
+                        }
+                    };
+                }
+                
+                numl4_impl! {
+                    U {
+                        U8 u8
+                        U16 u16
+                        U32 u32
+                        U64 u64
+                    }
+                    I {
+                        I8 i8 u8 zigzag_decode_i8
+                        I16 i16 u16 zigzag_decode_i16
+                        I32 i32 u32 zigzag_decode_i32
+                        I64 i64 u64 zigzag_decode_i64
+                    }
+                    F {
+                        F16 u16
+                        F32 u32
+                        F64 u64
+                    }
+                    L4::EXT1 => match h4.to_ext1()? {
+                        Ext1::Unit => Value::Unit,
+                        Ext1::True => Value::Bool(true),
+                        Ext1::False => Value::Bool(false),
+                        opt @ (Ext1::None | Ext1::Some) => {
+                            let t = self.ty()?;
+                            let opt = match opt {
+                                Ext1::None => None,
+                                Ext1::Some => Some(self.val()?),
+                                _ => return Err(Error::FstUnreachable),
+                            };
+                            Value::Option(t, Box::new(opt))
+                        },
+                        Ext1::Alias => {
+                            let r = self.typeid()?;
+                            let v = self.val()?;
+                            Value::Alias(r, Box::new(v))
+                        },
+                        Ext1::Type => {
+                            let t = self.ty()?;
+                            Value::Type(t)
+                        },
+                        Ext1::TypeId => {
+                            let r = self.typeid()?;
+                            Value::TypeId(r)
+                        },
+                    },
+                    L4::EXT2 | L4::EXT3 | L4::EXT4 | L4::EXT5 => todo!(),
+                }
             },
         })
     }

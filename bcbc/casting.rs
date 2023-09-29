@@ -6,9 +6,17 @@ impl Type {
             Type::Unknown    => Tag::Unknown,
             Type::Unit       => Tag::Unit,
             Type::Bool       => Tag::Bool,
-            Type::Int        => Tag::Int,
-            Type::UInt       => Tag::UInt,
-            Type::Float      => Tag::Float,
+            Type::U8         => Tag::U8,
+            Type::U16        => Tag::U16,
+            Type::U32        => Tag::U32,
+            Type::U64        => Tag::U64,
+            Type::I8         => Tag::I8,
+            Type::I16        => Tag::I16,
+            Type::I32        => Tag::I32,
+            Type::I64        => Tag::I64,
+            Type::F16        => Tag::F16,
+            Type::F32        => Tag::F32,
+            Type::F64        => Tag::F64,
             Type::String     => Tag::String,
             Type::Bytes      => Tag::Bytes,
             Type::Option(..) => Tag::Option,
@@ -30,9 +38,17 @@ impl Value {
         match self {
             Value::Unit          => Tag::Unit,
             Value::Bool(..)      => Tag::Bool,
-            Value::Int(..)       => Tag::Int,
-            Value::UInt(..)      => Tag::UInt,
-            Value::Float(..)     => Tag::Float,
+            Value::U8(..)        => Tag::U8,
+            Value::U16(..)       => Tag::U16,
+            Value::U32(..)       => Tag::U32,
+            Value::U64(..)       => Tag::U64,
+            Value::I8(..)        => Tag::I8,
+            Value::I16(..)       => Tag::I16,
+            Value::I32(..)       => Tag::I32,
+            Value::I64(..)       => Tag::I64,
+            Value::F16(..)       => Tag::F16,
+            Value::F32(..)       => Tag::F32,
+            Value::F64(..)       => Tag::F64,
             Value::String(..)    => Tag::String,
             Value::Bytes(..)     => Tag::Bytes,
             Value::Option(..)    => Tag::Option,
@@ -48,36 +64,21 @@ impl Value {
         }
     }
 
-    pub const fn as_htag(&self) -> HTag {
-        match self {
-            Value::Int(..)       => HTag::Int,
-            Value::UInt(..)      => HTag::UInt,
-            Value::Float(..)     => HTag::Float,
-            Value::String(..)    => HTag::String,
-            Value::Bytes(..)     => HTag::Bytes,
-            Value::List(..)      => HTag::List,
-            Value::Map(..)       => HTag::Map,
-            Value::Tuple(..)     => HTag::Tuple,
-            Value::CEnum(..)     => HTag::CEnum,
-            Value::Enum(..)      => HTag::Enum,
-            Value::Struct(..)    => HTag::Struct,
-
-            Value::Unit          |
-            Value::Bool(..)      |
-            Value::Option(..)    |
-            Value::Alias(..)     |
-            Value::Type(..)      |
-            Value::TypeId(..)    => HTag::L4,
-        }
-    }
-
     pub fn as_type(&self) -> Type {
         match self {
             Value::Unit => Type::Unit,
             Value::Bool(..) => Type::Bool,
-            Value::Int(..) => Type::Int,
-            Value::UInt(..) => Type::UInt,
-            Value::Float(..) => Type::Float,
+            Value::U8(..) => Type::U8,
+            Value::U16(..) => Type::U16,
+            Value::U32(..) => Type::U32,
+            Value::U64(..) => Type::U64,
+            Value::I8(..) => Type::I8,
+            Value::I16(..) => Type::I16,
+            Value::I32(..) => Type::I32,
+            Value::I64(..) => Type::I64,
+            Value::F16(..) => Type::F16,
+            Value::F32(..) => Type::F32,
+            Value::F64(..) => Type::F64,
             Value::String(..) => Type::String,
             Value::Bytes(..) => Type::Bytes,
             Value::Option(t, ..) => Type::Option(Box::new(t.clone())),
@@ -104,10 +105,23 @@ impl Value {
     }
 }
 
-impl Value {
-    pub fn from_float(v: f64) -> Value {
-        Value::Float(v.to_bits())
-    }
+// impl Value {
+//     pub fn from_float(v: f64) -> Value {
+//         Value::Float(v.to_bits())
+//     }
+// }
+
+macro_rules! into_v_impl {
+    // TODO auto make fn name with concat_ident! and const case convert
+    ($($fn_name:ident $variant:ident $ty:ty)*) => {$(
+        pub fn $fn_name(self) -> $ty {
+            if let Value::$variant(v) = self {
+                v
+            } else {
+                unreachable!()
+            }
+        }
+    )*};
 }
 
 impl Value {
@@ -119,52 +133,22 @@ impl Value {
         }
     }
 
-    pub fn into_bool(self) -> bool {
-        if let Value::Bool(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_int(self) -> i64 {
-        if let Value::Int(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_uint(self) -> u64 {
-        if let Value::UInt(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_float(self) -> f64 {
-        if let Value::Float(v) = self {
-            f64::from_bits(v)
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_string(self) -> String {
-        if let Value::String(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_bytes(self) -> Vec<u8> {
-        if let Value::Bytes(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
+    into_v_impl! {
+        into_bool Bool bool
+        into_u8 U8 u8
+        into_u16 U16 u16
+        into_u32 U32 u32
+        into_u64 U64 u64
+        into_i8 I8 i8
+        into_i16 I16 i16
+        into_i32 I32 i32
+        into_i64 I64 i64
+        // TODO convert?
+        into_f16 F16 u16
+        into_f32 F32 u32
+        into_f64 F64 u64
+        into_string String String
+        into_bytes Bytes Vec<u8>
     }
 
     pub fn into_option(self) -> Option<Value> {
@@ -231,19 +215,8 @@ impl Value {
         }
     }
 
-    pub fn into_type(self) -> Type {
-        if let Value::Type(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_type_id(self) -> TypeId {
-        if let Value::TypeId(v) = self {
-            v
-        } else {
-            unreachable!()
-        }
+    into_v_impl! {
+        into_type Type Type
+        into_type_id TypeId TypeId
     }
 }

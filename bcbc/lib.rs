@@ -8,55 +8,132 @@ pub use typeid::*;
 
 num_enum! {
     pub enum Tag {
-        Unknown   = 0x00,
-        Unit      = 0x01,
-        Bool      = 0x02,
-        Int       = 0x03,
-        UInt      = 0x04,
-        Float     = 0x05,
-        String    = 0x06,
-        Bytes     = 0x07,
-        Option    = 0x08,
-        List      = 0x09,
-        Map       = 0x0a,
-        Tuple     = 0x0b,
-        Alias     = 0x0c,
-        CEnum     = 0x0d,
-        Enum      = 0x0e,
-        Struct    = 0x0f,
-        Type      = 0x10,
-        TypeId    = 0x11,
+        Unknown = 0x00,
+        Unit    = 0x01,
+        Bool    = 0x02,
+        U8      = 0x03,
+        U16     = 0x04,
+        U32     = 0x05,
+        U64     = 0x06,
+        I8      = 0x07,
+        I16     = 0x08,
+        I32     = 0x09,
+        I64     = 0x0a,
+        F16     = 0x0b,
+        F32     = 0x0c,
+        F64     = 0x0d,
+        String  = 0x0e,
+        Bytes   = 0x0f,
+        Option  = 0x10,
+        List    = 0x11,
+        Map     = 0x12,
+        Tuple   = 0x13,
+        Alias   = 0x14,
+        CEnum   = 0x15,
+        Enum    = 0x16,
+        Struct  = 0x17,
+        Type    = 0x18,
+        TypeId  = 0x19,
     } as u8 else Error::Tag
 }
 
 num_enum! {
-    pub enum HTag {
-        L4        = 0x0,
-        Int       = 0x1,
-        UInt      = 0x2,
-        Float     = 0x3,
-        String    = 0x4,
-        Bytes     = 0x5,
-        List      = 0x6,
-        Map       = 0x7,
-        Tuple     = 0x8,
-        CEnum     = 0x9,
-        Enum      = 0xa,
-        Struct    = 0xb,
-    } as u8 else Error::HTag
+    pub enum H4 {
+        N1     = 0x0,
+        N2     = 0x1,
+        N3     = 0x2,
+        N4     = 0x3,
+        N5     = 0x4,
+        N6     = 0x5,
+        N7     = 0x6,
+        N8     = 0x7,
+        String = 0x8,
+        Bytes  = 0x9,
+        List   = 0xa,
+        Map    = 0xb,
+        Tuple  = 0xc,
+        CEnum  = 0xd,
+        Enum   = 0xe,
+        Struct = 0xf,
+    } as u8 else Error::H4
+}
+
+impl H4 {
+    pub const fn is_num(&self) -> bool {
+        (*self as u8) < 0x8
+    }
+
+    pub const fn to_bytevar_pos(self) -> Result<usize> {
+        Ok(match self {
+            H4::N1 => 7,
+            H4::N2 => 6,
+            H4::N3 => 5,
+            H4::N4 => 4,
+            H4::N5 => 3,
+            H4::N6 => 2,
+            H4::N7 => 1,
+            H4::N8 => 0,
+            _ => return Err(Error::H4ToN(self)),
+        })
+    }
+
+    pub const fn to_ext1(self) -> Result<Ext1> {
+        Ok(match self {
+            H4::N1 => Ext1::Unit,
+            H4::N2 => Ext1::False,
+            H4::N3 => Ext1::True,
+            H4::N4 => Ext1::None,
+            H4::N5 => Ext1::Some,
+            H4::N6 => Ext1::Alias,
+            H4::N7 => Ext1::Type,
+            H4::N8 => Ext1::TypeId,
+            _ => return Err(Error::H4ToExt1(self)),
+        })
+    }
 }
 
 num_enum! {
-    pub enum LTag {
-        Unit      = 0x0,
-        False     = 0x1,
-        True      = 0x2,
-        None      = 0x3,
-        Some      = 0x4,
-        Alias     = 0x5,
-        Type      = 0x6,
-        TypeId    = 0x7,
-    } as u8 else Error::LTag
+    pub enum L4 {
+        U8   = 0x0,
+        U16  = 0x1,
+        U32  = 0x2,
+        U64  = 0x3,
+        I8   = 0x4,
+        I16  = 0x5,
+        I32  = 0x6,
+        I64  = 0x7,
+        F16  = 0x8,
+        F32  = 0x9,
+        F64  = 0xa,
+        EXT1 = 0xb,
+        EXT2 = 0xc,
+        EXT3 = 0xd,
+        EXT4 = 0xe,
+        EXT5 = 0xf,
+    } as u8 else Error::L4
+}
+
+#[inline]
+pub const fn from_h4l4(h4: H4, l4: L4) -> u8 {
+    (h4 as u8) << 4 | (l4 as u8)
+}
+
+#[inline]
+pub fn to_h4l4(n: u8) -> Result<(H4, L4)> {
+    Ok(((n >> 4).try_into()?, (n & 0xf).try_into()?))
+}
+
+num_enum! {
+    pub enum Ext1 {
+        Unit   = 0x0,
+        False  = 0x1,
+        True   = 0x2,
+        None   = 0x3,
+        Some   = 0x4,
+        Alias  = 0x5,
+        Type   = 0x6,
+        TypeId = 0x7,
+    } as u8 else Error::Ext1
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -65,18 +142,26 @@ pub enum Type {
 
     Unit,
     Bool,
-    Int,
-    UInt,
-    Float,
+
+    U8,
+    U16,
+    U32,
+    U64,
+    I8,
+    I16,
+    I32,
+    I64,
+    F16,
+    F32,
+    F64,
+
     String,
     Bytes,
 
     Option(Box<Type>),
     List(Box<Type>),
     Map(Box<Type>, Box<Type>),
-
     Tuple(Vec<Type>),
-
     Alias(TypeId),
     CEnum(TypeId),
     Enum(TypeId),
@@ -90,9 +175,19 @@ pub enum Type {
 pub enum Value {
     Unit,
     Bool(bool),
-    Int(i64),
-    UInt(u64),
-    Float(u64),
+
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    F16(u16),
+    F32(u32),
+    F64(u64),
+
     String(String),
     Bytes(Vec<u8>),
 
@@ -122,10 +217,33 @@ pub trait Schema {
     fn deserialize(val: Value) -> Self;
 }
 
+error_enum! {
+    #[derive(Debug)]
+    pub enum Error {
+        FloatL4(u8),
+        TooShort((usize, usize)),
+        TooLong(usize),
+        Tag(u8),
+        H4(u8),
+        L4(u8),
+        Ext1(u8),
+        H4ToN(H4),
+        H4ToExt1(H4),
+        Size(u64),
+        // waiting for flow-sensitive typing implemented
+        FstUnreachable,
+        // TODO debug vars
+        BytevarSlicing,
+    } convert {
+        Utf8 => std::string::FromUtf8Error,
+    }
+}
+
+type Result<T> = core::result::Result<T, Error>;
+
 pub mod casting;
 pub mod reader;
-use reader::Error;
-pub mod writer;
+// pub mod writer;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
