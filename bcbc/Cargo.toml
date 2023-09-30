@@ -12,12 +12,10 @@ path = "lib.rs"
 
 [dependencies]
 foundations = { git = "https://github.com/Berylsoft/foundations", features = [
-    "usize-casting",
     "byterepr",
     "bytes-read",
     "num-compress",
 
-    "num-compress-macros",
     "error-enum",
     "num-enum",
     "byterepr-macros",

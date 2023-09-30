@@ -104,6 +104,47 @@ impl H4 {
             _ => return Err(Error::H4ToExt1(self)),
         })
     }
+
+    pub const fn from_bytevar_u_pos(pos: usize) -> H4 {
+        match pos {
+            7 => H4::N1,
+            6 => H4::N2,
+            5 => H4::N3,
+            4 => H4::N4,
+            3 => H4::N5,
+            2 => H4::N6,
+            1 => H4::N7,
+            0 => H4::N8,
+            _ => todo!(),
+        }
+    }
+
+    pub const fn from_bytevar_f_pos(pos: usize) -> H4 {
+        match pos {
+            1 => H4::N1,
+            2 => H4::N2,
+            3 => H4::N3,
+            4 => H4::N4,
+            5 => H4::N5,
+            6 => H4::N6,
+            7 => H4::N7,
+            8 => H4::N8,
+            _ => todo!(),
+        }
+    }
+
+    pub const fn from_ext1(ext1: Ext1) -> H4 {
+        match ext1 {
+            Ext1::Unit   => H4::N1,
+            Ext1::False  => H4::N2,
+            Ext1::True   => H4::N3,
+            Ext1::None   => H4::N4,
+            Ext1::Some   => H4::N5,
+            Ext1::Alias  => H4::N6,
+            Ext1::Type   => H4::N7,
+            Ext1::TypeId => H4::N8,
+        }
+    }
 }
 
 num_enum! {
@@ -231,6 +272,7 @@ pub trait Schema {
     fn deserialize(val: Value) -> Self;
 }
 
+// TODO determine error and fatal
 error_enum! {
     #[derive(Debug)]
     pub enum Error {
@@ -257,7 +299,7 @@ type Result<T> = core::result::Result<T, Error>;
 
 pub mod casting;
 pub mod reader;
-// pub mod writer;
+pub mod writer;
 
 // #[cfg(test)]
 // mod tests;

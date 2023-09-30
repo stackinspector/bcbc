@@ -1,5 +1,20 @@
-use foundations::{num_compress::*, usize_casting::*, trailing_zero_byte};
+use foundations::num_compress::*;
 use super::*;
+
+// TODO writer error?
+
+#[inline]
+pub fn usize_u64(n: usize) -> u64 {
+    n.try_into().expect("FATAL: usize length to u64 error")
+}
+
+macro_rules! num_impl {
+    ($($num:tt)*) => {$(
+        fn $num(&mut self, n: $num) {
+            self.bytes(n.to_be_bytes());
+        }
+    )*};
+}
 
 struct Writer {
     bytes: Vec<u8>,
@@ -25,16 +40,8 @@ impl Writer {
         self.bytes.push(n);
     }
 
-    fn u16(&mut self, n: u16) {
-        self.bytes(n.to_be_bytes());
-    }
-
-    fn u32(&mut self, n: u32) {
-        self.bytes(n.to_be_bytes());
-    }
-
-    fn u64(&mut self, n: u64) {
-        self.bytes(n.to_be_bytes());
+    num_impl! {
+        u16 u32 u64
     }
 
     fn typeid(&mut self, id: &TypeId) {
@@ -57,9 +64,17 @@ impl Writer {
             Type::Unknown |
             Type::Unit |
             Type::Bool |
-            Type::Int |
-            Type::UInt |
-            Type::Float |
+            Type::U8 |
+            Type::U16 |
+            Type::U32 |
+            Type::U64 |
+            Type::I8 |
+            Type::I16 |
+            Type::I32 |
+            Type::I64 |
+            Type::F16 |
+            Type::F32 |
+            Type::F64 |
             Type::String |
             Type::Bytes |
             Type::Type |
@@ -97,162 +112,196 @@ impl Writer {
     }
 
     #[inline]
-    fn with_l4(&mut self, htag: HTag, l: u8) {
-        self.u8(from_h4l4(htag as u8, l));
+    fn header(&mut self, h4: H4, l4: L4) {
+        self.u8(from_h4l4(h4, l4));
     }
 
-    fn with_ltag(&mut self, htag: HTag, l: LTag) {
-        self.with_l4(htag, l as u8)
+    fn ext1(&mut self, ext1: Ext1) {
+        self.header(H4::from_ext1(ext1), L4::EXT1);
     }
 
-    fn with_uvar(&mut self, htag: HTag, u: u64) {
+    fn extvar(&mut self, h4: H4, u: u64) {
+        // TODO casting using overflow protected methods?
         if u < (EXT8 as u64) {
-            self.with_l4(htag, u as u8);
+            self.header(h4, (u as u8).try_into().unwrap());
         } else if u <= (u8::MAX as u64) {
-            self.with_l4(htag, EXT8);
+            self.header(h4, EXT8);
             self.u8(u as u8);
         } else if u <= (u16::MAX as u64) {
-            self.with_l4(htag, EXT16);
+            self.header(h4, EXT16);
             self.u16(u as u16);
         } else if u <= (u32::MAX as u64) {
-            self.with_l4(htag, EXT32);
+            self.header(h4, EXT32);
             self.u32(u as u32);
         } else {
-            self.with_l4(htag, EXT64);
+            self.header(h4, EXT64);
             self.u64(u);
         }
     }
 
-    fn with_ivar(&mut self, htag: HTag, i: i64) {
-        self.with_uvar(htag, zigzag_encode(i))
-    }
-
-    fn with_szvar(&mut self, htag: HTag, sz: usize) {
-        self.with_uvar(htag, usize_u64(sz))
-    }
-
-    fn with_fvar(&mut self, htag: HTag, f: u64) {
-        let len = trailing_zero_byte!(f);
-        self.with_l4(htag, len as u8);
-        let buf = f.to_be_bytes();
-        self.bytes(&buf[0..len]);
+    fn extszvar(&mut self, h4: H4, sz: usize) {
+        self.extvar(h4, usize_u64(sz))
     }
 
     fn val_seq(&mut self, s: &Vec<Value>) {
-
         for v in s {
             self.val(v);
         }
-
     }
 
     fn val_seq_map(&mut self, s: &Vec<(Value, Value)>) {
-
         for (k, v) in s {
             self.val(k);
             self.val(v);
         }
-
     }
 
     fn val(&mut self, val: &Value) {
-        let htag = val.as_htag();
-        match val {
-            Value::Unit => {
-                self.with_ltag(htag, LTag::Unit);
+        macro_rules! numval_impl {
+            // TODO(Rust): macro on match arms
+            (
+                U {$($uname:ident $uty:tt)*}
+                I {$($iname:ident $ity:tt $iuty:tt $zigzag_fn:tt)*}
+                F {$($fname:ident $fty:tt)*}
+                $($tt:tt)*
+            ) => {
+                match val {
+                    $(Value::$uname(u) => {
+                        let mut buf = [0; 8];
+                        const NPOS: usize = 8 - (($uty::BITS as usize) / 8);
+                        buf[NPOS..].copy_from_slice(&u.to_be_bytes());
+                        let mut pos = 7;
+                        for (i, b) in buf.iter().enumerate() {
+                            if *b != 0 {
+                                pos = i;
+                                break;
+                            }
+                        }
+                        self.header(H4::from_bytevar_u_pos(pos), L4::$uname);
+                        self.bytes(&buf[pos..]);
+                    })*,
+                    $(Value::$iname(i) => {
+                        let u = $zigzag_fn(*i);
+                        let mut buf = [0; 8];
+                        const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
+                        buf[NPOS..].copy_from_slice(&u.to_be_bytes());
+                        let mut pos = 7;
+                        for (i, b) in buf.iter().enumerate() {
+                            if *b != 0 {
+                                pos = i;
+                                break;
+                            }
+                        }
+                        self.header(H4::from_bytevar_u_pos(pos), L4::$uname);
+                        self.bytes(&buf[pos..]);
+                    })*,
+                    $(Value::$fname(f) => {
+                        let mut buf = [0; 8];
+                        const NPOS: usize = 8 - (($fty::BITS as usize) / 8);
+                        buf[..NPOS].copy_from_slice(&f.to_be_bytes());
+                        let mut pos = 7;
+                        for (i, b) in buf.iter().rev().enumerate() {
+                            if *b != 0 {
+                                pos = i;
+                                break;
+                            }
+                        }
+                        let pos = 8 - pos;
+                        self.header(H4::from_bytevar_u_pos(pos), L4::$fname);
+                        self.bytes(&buf[..pos]);
+                    })*,
+                    $($tt)*
+                }
+            };
+        }
 
+        numval_impl! {
+            U {
+                U8 u8
+                U16 u16
+                U32 u32
+                U64 u64
+            }
+            I {
+                I8 i8 u8 zigzag_encode_i8
+                I16 i16 u16 zigzag_encode_i16
+                I32 i32 u32 zigzag_encode_i32
+                I64 i64 u64 zigzag_encode_i64
+            }
+            F {
+                F16 u16
+                F32 u32
+                F64 u64
+            }
+            Value::Unit => {
+                self.ext1(Ext1::Unit);
             },
             Value::Bool(b) => {
                 if *b {
-                    self.with_ltag(htag, LTag::True);
+                    self.ext1(Ext1::True)
                 } else {
-                    self.with_ltag(htag, LTag::False);
+                    self.ext1(Ext1::False);
                 }
-
-            },
-            Value::Int(i) => {
-                self.with_ivar(htag, *i);
-
-            },
-            Value::UInt(u) => {
-                self.with_uvar(htag, *u);
-
-            },
-            Value::Float(f) => {
-                self.with_fvar(htag, *f);
-
             },
             Value::String(b) => {
-                self.with_szvar(htag, b.len());
+                self.extszvar(H4::String, b.len());
                 self.bytes(b);
-
             },
             Value::Bytes(b) => {
-                self.with_szvar(htag, b.len());
+                self.extszvar(H4::Bytes, b.len());
                 self.bytes(b);
-
             },
             Value::Option(t, opt) => {
                 if let Some(v) = opt.as_ref() {
-                    self.with_ltag(htag, LTag::Some);
+                    self.ext1(Ext1::Some);
                     self.ty(t);
                     self.val(v);
                 } else {
-                    self.with_ltag(htag, LTag::None);
+                    self.ext1(Ext1::None);
                     self.ty(t);
                 }
-
             },
             Value::List(t, s) => {
-                self.with_szvar(htag, s.len());
+                self.extszvar(H4::List, s.len());
                 self.ty(t);
                 self.val_seq(s);
-
             },
             Value::Map((tk, tv), s) => {
-                self.with_szvar(htag, s.len());
+                self.extszvar(H4::Map, s.len());
                 self.ty(tk);
                 self.ty(tv);
                 self.val_seq_map(s);
-
             },
             Value::Tuple(s) => {
-                self.with_szvar(htag, s.len());
+                self.extszvar(H4::Tuple, s.len());
                 self.val_seq(s);
-
             },
             Value::Alias(r, v) => {
-                self.with_ltag(htag, LTag::Alias);
+                self.ext1(Ext1::Alias);
                 self.typeid(r);
                 self.val(v);
-
             },
             Value::CEnum(r, ev) => {
-                self.with_uvar(htag, *ev as u64);
+                self.extvar(H4::CEnum, *ev as u64);
                 self.typeid(r);
-
             },
             Value::Enum(r, ev, v) => {
-                self.with_uvar(htag, *ev as u64);
+                self.extvar(H4::Enum, *ev as u64);
                 self.typeid(r);
                 self.val(v);
-
             },
             Value::Struct(r, s) => {
-                self.with_szvar(htag, s.len());
+                self.extszvar(H4::Struct, s.len());
                 self.typeid(r);
                 self.val_seq(s);
-                
             },
             Value::Type(t) => {
-                self.with_ltag(htag, LTag::Type);
+                self.ext1(Ext1::Type);
                 self.ty(t);
-
             },
             Value::TypeId(r) => {
-                self.with_ltag(htag, LTag::TypeId);
+                self.ext1(Ext1::TypeId);
                 self.typeid(r);
-
             },
         }
     }
