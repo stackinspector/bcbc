@@ -16,6 +16,28 @@ macro_rules! num_impl {
     )*};
 }
 
+fn byteuvar_pos(buf: &[u8; 8]) -> usize {
+    let mut pos = 7;
+    for (i, b) in buf.iter().enumerate() {
+        if *b != 0 {
+            pos = i;
+            break;
+        }
+    }
+    pos
+}
+
+fn bytefvar_pos(buf: &[u8; 8]) -> usize {
+    let mut pos = 7;
+    for (i, b) in buf.iter().rev().enumerate() {
+        if *b != 0 {
+            pos = i;
+            break;
+        }
+    }
+    8 - pos
+}
+
 struct Writer {
     bytes: Vec<u8>,
 }
@@ -170,13 +192,7 @@ impl Writer {
                         let mut buf = [0; 8];
                         const NPOS: usize = 8 - (($uty::BITS as usize) / 8);
                         buf[NPOS..].copy_from_slice(&u.to_be_bytes());
-                        let mut pos = 7;
-                        for (i, b) in buf.iter().enumerate() {
-                            if *b != 0 {
-                                pos = i;
-                                break;
-                            }
-                        }
+                        let pos = byteuvar_pos(&buf);
                         self.header(H4::from_bytevar_u_pos(pos), L4::$uname);
                         self.bytes(&buf[pos..]);
                     })*,
@@ -185,13 +201,7 @@ impl Writer {
                         let mut buf = [0; 8];
                         const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
                         buf[NPOS..].copy_from_slice(&u.to_be_bytes());
-                        let mut pos = 7;
-                        for (i, b) in buf.iter().enumerate() {
-                            if *b != 0 {
-                                pos = i;
-                                break;
-                            }
-                        }
+                        let pos = byteuvar_pos(&buf);
                         self.header(H4::from_bytevar_u_pos(pos), L4::$iname);
                         self.bytes(&buf[pos..]);
                     })*,
@@ -199,14 +209,7 @@ impl Writer {
                         let mut buf = [0; 8];
                         const NPOS: usize = ($fty::BITS as usize) / 8;
                         buf[..NPOS].copy_from_slice(&f.to_be_bytes());
-                        let mut pos = 7;
-                        for (i, b) in buf.iter().rev().enumerate() {
-                            if *b != 0 {
-                                pos = i;
-                                break;
-                            }
-                        }
-                        let pos = 8 - pos;
+                        let pos = bytefvar_pos(&buf);
                         self.header(H4::from_bytevar_f_pos(pos), L4::$fname);
                         self.bytes(&buf[..pos]);
                     })*,
