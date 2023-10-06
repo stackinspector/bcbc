@@ -236,7 +236,7 @@ impl<'a> Reader<'a> {
                     // TODO(Rust): macro on match arms
                     (
                         U {$($uname:ident $uty:tt)*}
-                        I {$($iname:ident $ity:tt $iuty:tt $zigzag_fn:tt)*}
+                        I {$($iname:ident $iuty:tt $zigzag_fn:tt)*}
                         F {$($fname:ident $fty:tt)*}
                         $($tt:tt)*
                     ) => {
@@ -273,10 +273,10 @@ impl<'a> Reader<'a> {
                         U64 u64
                     }
                     I {
-                        I8 i8 u8 zigzag_decode_i8
-                        I16 i16 u16 zigzag_decode_i16
-                        I32 i32 u32 zigzag_decode_i32
-                        I64 i64 u64 zigzag_decode_i64
+                        I8 u8 zigzag_decode_i8
+                        I16 u16 zigzag_decode_i16
+                        I32 u32 zigzag_decode_i32
+                        I64 u64 zigzag_decode_i64
                     }
                     F {
                         F16 u16
