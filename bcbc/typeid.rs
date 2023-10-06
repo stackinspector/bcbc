@@ -67,7 +67,7 @@ impl HashId {
         let mut hasher = SipHasher::new();
         path.hash(&mut hasher);
         let hash = hasher.finish();
-        let hash = hash.to_be_bytes()[1..].try_into().unwrap();
+        let hash = hash.to_bytes()[1..].try_into().unwrap();
         HashId { hash }
     }
 }

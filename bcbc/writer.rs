@@ -1,4 +1,4 @@
-use foundations::num_compress::*;
+use foundations::{num_compress::*, byterepr::*};
 use super::*;
 
 // TODO writer error?
@@ -11,7 +11,7 @@ pub fn usize_u64(n: usize) -> u64 {
 macro_rules! num_impl {
     ($($num:tt)*) => {$(
         fn $num(&mut self, n: $num) {
-            self.bytes(n.to_be_bytes());
+            self.bytes(n.to_bytes());
         }
     )*};
 }
@@ -191,7 +191,7 @@ impl Writer {
                     $(Value::$uname(u) => {
                         let mut buf = [0; 8];
                         const NPOS: usize = 8 - (($uty::BITS as usize) / 8);
-                        buf[NPOS..].copy_from_slice(&u.to_be_bytes());
+                        buf[NPOS..].copy_from_slice(&u.to_bytes());
                         let pos = byteuvar_pos(&buf);
                         self.header(H4::from_bytevar_u_pos(pos), L4::$uname);
                         self.bytes(&buf[pos..]);
@@ -200,7 +200,7 @@ impl Writer {
                         let u = $zigzag_fn(*i);
                         let mut buf = [0; 8];
                         const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
-                        buf[NPOS..].copy_from_slice(&u.to_be_bytes());
+                        buf[NPOS..].copy_from_slice(&u.to_bytes());
                         let pos = byteuvar_pos(&buf);
                         self.header(H4::from_bytevar_u_pos(pos), L4::$iname);
                         self.bytes(&buf[pos..]);
@@ -208,7 +208,7 @@ impl Writer {
                     $(Value::$fname(f) => {
                         let mut buf = [0; 8];
                         const NPOS: usize = ($fty::BITS as usize) / 8;
-                        buf[..NPOS].copy_from_slice(&f.to_be_bytes());
+                        buf[..NPOS].copy_from_slice(&f.to_bytes());
                         let pos = bytefvar_pos(&buf);
                         self.header(H4::from_bytevar_f_pos(pos), L4::$fname);
                         self.bytes(&buf[..pos]);

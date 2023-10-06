@@ -1,4 +1,4 @@
-use foundations::{num_compress::*, bytes_read::*};
+use foundations::{num_compress::*, bytes_read::*, byterepr::*};
 use super::*;
 
 #[inline]
@@ -13,7 +13,7 @@ struct Reader<'a> {
 macro_rules! num_impl {
     ($($num:tt)*) => {$(
         fn $num(&mut self) -> Result<$num> {
-            self.bytes_sized().map($num::from_be_bytes)
+            self.bytes_sized().map($num::from_bytes)
         }
     )*};
 }
@@ -245,20 +245,20 @@ impl<'a> Reader<'a> {
                                 let buf = self.byteuvar_buf(h4)?;
                                 const NPOS: usize = 8 - (($uty::BITS as usize) / 8);
                                 let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
-                                Value::$uname(<$uty>::from_be_bytes(buf))
+                                Value::$uname(<$uty>::from_bytes(buf))
                             })*,
                             $(L4::$iname => {
                                 let buf = self.byteuvar_buf(h4)?;
                                 const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
                                 let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
-                                let u = <$iuty>::from_be_bytes(buf);
+                                let u = <$iuty>::from_bytes(buf);
                                 Value::$iname($zigzag_fn(u))
                             })*,
                             $(L4::$fname => {
                                 let buf = self.bytefvar_buf(h4)?;
                                 const NPOS: usize = ($fty::BITS as usize) / 8;
                                 let buf = buf[..NPOS].try_into().map_err(|_| Error::BytevarSlicing)?;
-                                Value::$fname(<$fty>::from_be_bytes(buf))
+                                Value::$fname(<$fty>::from_bytes(buf))
                             })*,
                             $($tt)*
                         }
