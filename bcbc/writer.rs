@@ -192,12 +192,12 @@ impl Writer {
                                 break;
                             }
                         }
-                        self.header(H4::from_bytevar_u_pos(pos), L4::$uname);
+                        self.header(H4::from_bytevar_u_pos(pos), L4::$iname);
                         self.bytes(&buf[pos..]);
                     })*,
                     $(Value::$fname(f) => {
                         let mut buf = [0; 8];
-                        const NPOS: usize = 8 - (($fty::BITS as usize) / 8);
+                        const NPOS: usize = ($fty::BITS as usize) / 8;
                         buf[..NPOS].copy_from_slice(&f.to_be_bytes());
                         let mut pos = 7;
                         for (i, b) in buf.iter().rev().enumerate() {
@@ -207,7 +207,7 @@ impl Writer {
                             }
                         }
                         let pos = 8 - pos;
-                        self.header(H4::from_bytevar_u_pos(pos), L4::$fname);
+                        self.header(H4::from_bytevar_f_pos(pos), L4::$fname);
                         self.bytes(&buf[..pos]);
                     })*,
                     $($tt)*
