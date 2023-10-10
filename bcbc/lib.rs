@@ -58,95 +58,6 @@ num_enum! {
     } as u8 else Fatal::H4
 }
 
-impl H4 {
-    pub const fn is_num(&self) -> bool {
-        (*self as u8) < 0x8
-    }
-
-    pub const fn to_bytevar_u_pos(self) -> FatalResult<usize> {
-        Ok(match self {
-            H4::N1 => 7,
-            H4::N2 => 6,
-            H4::N3 => 5,
-            H4::N4 => 4,
-            H4::N5 => 3,
-            H4::N6 => 2,
-            H4::N7 => 1,
-            H4::N8 => 0,
-            _ => return Err(Fatal::H4ToN(self)),
-        })
-    }
-
-    pub const fn to_bytevar_f_pos(self) -> FatalResult<usize> {
-        Ok(match self {
-            H4::N1 => 1,
-            H4::N2 => 2,
-            H4::N3 => 3,
-            H4::N4 => 4,
-            H4::N5 => 5,
-            H4::N6 => 6,
-            H4::N7 => 7,
-            H4::N8 => 8,
-            _ => return Err(Fatal::H4ToN(self)),
-        })
-    }
-
-    pub const fn to_ext1(self) -> FatalResult<Ext1> {
-        Ok(match self {
-            H4::N1 => Ext1::Unit,
-            H4::N2 => Ext1::False,
-            H4::N3 => Ext1::True,
-            H4::N4 => Ext1::None,
-            H4::N5 => Ext1::Some,
-            H4::N6 => Ext1::Alias,
-            H4::N7 => Ext1::Type,
-            H4::N8 => Ext1::TypeId,
-            _ => return Err(Fatal::H4ToExt1(self)),
-        })
-    }
-
-    pub const fn from_bytevar_u_pos(pos: usize) -> FatalResult<H4> {
-        Ok(match pos {
-            7 => H4::N1,
-            6 => H4::N2,
-            5 => H4::N3,
-            4 => H4::N4,
-            3 => H4::N5,
-            2 => H4::N6,
-            1 => H4::N7,
-            0 => H4::N8,
-            _ => return Err(Fatal::NToH4(pos)),
-        })
-    }
-
-    pub const fn from_bytevar_f_pos(pos: usize) -> FatalResult<H4> {
-        Ok(match pos {
-            1 => H4::N1,
-            2 => H4::N2,
-            3 => H4::N3,
-            4 => H4::N4,
-            5 => H4::N5,
-            6 => H4::N6,
-            7 => H4::N7,
-            8 => H4::N8,
-            _ => return Err(Fatal::NToH4(pos)),
-        })
-    }
-
-    pub const fn from_ext1(ext1: Ext1) -> H4 {
-        match ext1 {
-            Ext1::Unit   => H4::N1,
-            Ext1::False  => H4::N2,
-            Ext1::True   => H4::N3,
-            Ext1::None   => H4::N4,
-            Ext1::Some   => H4::N5,
-            Ext1::Alias  => H4::N6,
-            Ext1::Type   => H4::N7,
-            Ext1::TypeId => H4::N8,
-        }
-    }
-}
-
 num_enum! {
     pub enum L4 {
         U8   = 0x0,
@@ -166,16 +77,6 @@ num_enum! {
         EXT1 = 0xe,
         EXT2 = 0xf,
     } as u8 else Fatal::L4
-}
-
-#[inline]
-pub const fn from_h4l4(h4: H4, l4: L4) -> u8 {
-    (h4 as u8) << 4 | (l4 as u8)
-}
-
-#[inline]
-pub fn to_h4l4(n: u8) -> Result<(H4, L4)> {
-    Ok(((n >> 4).try_into()?, (n & 0xf).try_into()?))
 }
 
 num_enum! {

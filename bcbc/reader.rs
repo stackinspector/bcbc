@@ -184,7 +184,7 @@ impl<'a> Reader<'a> {
     }
 
     fn val(&mut self) -> Result<Value> {
-        let (h4, l4) = to_h4l4(self.u8()?)?;
+        let (h4, l4) = casting::to_h4l4(self.u8()?)?;
         Ok(match h4 {
             H4::String => {
                 let len = self.extszvar(l4)?;

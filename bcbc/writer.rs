@@ -135,7 +135,7 @@ impl Writer {
 
     #[inline]
     fn header(&mut self, h4: H4, l4: L4) {
-        self.u8(from_h4l4(h4, l4));
+        self.u8(casting::from_h4l4(h4, l4));
     }
 
     fn ext1(&mut self, ext1: Ext1) {
