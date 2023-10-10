@@ -154,17 +154,17 @@ num_enum! {
         U32  = 0x2,
         U64  = 0x3,
         I8   = 0x4,
-        I16  = 0x5,
-        I32  = 0x6,
-        I64  = 0x7,
-        F16  = 0x8,
-        F32  = 0x9,
-        F64  = 0xa,
-        EXT1 = 0xb,
-        EXT2 = 0xc,
-        EXT3 = 0xd,
-        EXT4 = 0xe,
-        EXT5 = 0xf,
+        P16  = 0x5,
+        P32  = 0x6,
+        P64  = 0x7,
+        N16  = 0x8,
+        N32  = 0x9,
+        N64  = 0xa,
+        F16  = 0xb,
+        F32  = 0xc,
+        F64  = 0xd,
+        EXT1 = 0xe,
+        EXT2 = 0xf,
     } as u8 else Error::L4
 }
 
@@ -261,10 +261,10 @@ pub enum Value {
     TypeId(TypeId),
 }
 
-pub const EXT8:  L4 = L4::EXT2; // 0xc
-pub const EXT16: L4 = L4::EXT3; // 0xd
-pub const EXT32: L4 = L4::EXT4; // 0xe
-pub const EXT64: L4 = L4::EXT5; // 0xf
+pub const EXT8:  L4 = L4::F32;  // 0xc
+pub const EXT16: L4 = L4::F64;  // 0xd
+pub const EXT32: L4 = L4::EXT1; // 0xe
+pub const EXT64: L4 = L4::EXT2; // 0xf
 
 pub trait Schema {
     const ID: TypeId;

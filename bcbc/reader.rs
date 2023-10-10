@@ -1,4 +1,4 @@
-use foundations::{num_compress::*, bytes_read::*, byterepr::*};
+use foundations::{bytes_read::*, byterepr::*};
 use super::*;
 
 #[inline]
@@ -236,7 +236,8 @@ impl<'a> Reader<'a> {
                     // TODO(Rust): macro on match arms
                     (
                         U {$($uname:ident $uty:tt)*}
-                        I {$($iname:ident $iuty:tt $zigzag_fn:tt)*}
+                        I8 {$($i8name:ident $i8ty:tt)*}
+                        I {$($iname:ident $pname:ident $nname:ident $iuty:tt $ity:tt)*}
                         F {$($fname:ident $fty:tt)*}
                         $($tt:tt)*
                     ) => {
@@ -247,12 +248,29 @@ impl<'a> Reader<'a> {
                                 let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
                                 Value::$uname(<$uty>::from_bytes(buf))
                             })*,
-                            $(L4::$iname => {
+                            $(L4::$i8name => {
+                                let buf = self.byteuvar_buf(h4)?;
+                                const NPOS: usize = 8 - (($i8ty::BITS as usize) / 8);
+                                let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
+                                let u = <$i8ty>::from_bytes(buf);
+                                Value::$i8name(u)
+                            })*,
+                            $(L4::$pname => {
                                 let buf = self.byteuvar_buf(h4)?;
                                 const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
                                 let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
                                 let u = <$iuty>::from_bytes(buf);
-                                Value::$iname($zigzag_fn(u))
+                                let i = u.try_into().unwrap(); // TODO Error
+                                Value::$iname(i)
+                            }
+                            L4::$nname => {
+                                let buf = self.byteuvar_buf(h4)?;
+                                const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
+                                let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
+                                let u = <$iuty>::from_bytes(buf);
+                                let i: $ity = u.try_into().unwrap(); // TODO Error
+                                let i = -i; // since from uN cannot be iN::MIN
+                                Value::$iname(i)
                             })*,
                             $(L4::$fname => {
                                 let buf = self.bytefvar_buf(h4)?;
@@ -272,11 +290,13 @@ impl<'a> Reader<'a> {
                         U32 u32
                         U64 u64
                     }
+                    I8 {
+                        I8 i8
+                    }
                     I {
-                        I8 u8 zigzag_decode_i8
-                        I16 u16 zigzag_decode_i16
-                        I32 u32 zigzag_decode_i32
-                        I64 u64 zigzag_decode_i64
+                        I16 P16 N16 u16 i16
+                        I32 P32 N32 u32 i32
+                        I64 P64 N64 u64 i64
                     }
                     F {
                         F16 u16
@@ -310,7 +330,7 @@ impl<'a> Reader<'a> {
                             Value::TypeId(r)
                         },
                     },
-                    L4::EXT2 | L4::EXT3 | L4::EXT4 | L4::EXT5 => todo!(),
+                    L4::EXT2 => todo!(),
                 }
             },
         })

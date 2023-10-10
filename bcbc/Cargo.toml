@@ -14,7 +14,6 @@ path = "lib.rs"
 foundations = { git = "https://github.com/Berylsoft/foundations", features = [
     "byterepr",
     "bytes-read",
-    "num-compress",
 
     "error-enum",
     "num-enum",

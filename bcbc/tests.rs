@@ -56,22 +56,22 @@ fn test() {
         ]),
         hex!("
         cc 10
-        0b
-        1b
-        27 ed5be1
+        0e
+        1e
+        2a 76adf1
         13 5f49
-        1a 4049
+        1d 4049
         89 426572796c736f6674
         93 280029
-        3b 0e
-        4b 02 2b
-        5b ff fedcba98765432 91 ff
+        3e 0e
+        4e 02 2e
+        5e ff fedcba98765432 91 ff
         db 01 5f50
-        e5 01 5f49 07 0a
+        e5 01 5f49 07 05
         ec a3 fe 00aa 03 0c
-        6b 11 11 17 00
-        7b ff fedcba98765432
-        4b  13 03 0a 01 00  c3 07 12 0b 2b
+        6e 11 11 17 00
+        7e ff fedcba98765432
+        4e  13 03 0a 01 00  c3 07 09 0e 2e
         ")
     )
 }

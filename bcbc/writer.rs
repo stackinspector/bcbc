@@ -1,4 +1,4 @@
-use foundations::{num_compress::*, byterepr::*};
+use foundations::byterepr::*;
 use super::*;
 
 // TODO writer error?
@@ -183,7 +183,8 @@ impl Writer {
             // TODO(Rust): macro on match arms
             (
                 U {$($uname:ident $uty:tt)*}
-                I {$($iname:ident $ity:tt $iuty:tt $zigzag_fn:tt)*}
+                I8 {$($i8name:ident $i8uty:tt)*}
+                I {$($iname:ident $pname:ident $nname:ident $iuty:tt)*}
                 F {$($fname:ident $fty:tt)*}
                 $($tt:tt)*
             ) => {
@@ -196,13 +197,26 @@ impl Writer {
                         self.header(H4::from_bytevar_u_pos(pos), L4::$uname);
                         self.bytes(&buf[pos..]);
                     })*,
+                    $(Value::$i8name(i) => {
+                        let mut buf = [0; 8];
+                        const NPOS: usize = 8 - (($i8uty::BITS as usize) / 8);
+                        buf[NPOS..].copy_from_slice(&i.to_bytes());
+                        let pos = byteuvar_pos(&buf);
+                        self.header(H4::from_bytevar_u_pos(pos), L4::$i8name);
+                        self.bytes(&buf[pos..]);
+                    })*,
                     $(Value::$iname(i) => {
-                        let u = $zigzag_fn(*i);
+                        let l4 = if i.is_positive() {
+                            L4::$pname
+                        } else {
+                            L4::$nname
+                        };
+                        let u = i.unsigned_abs();
                         let mut buf = [0; 8];
                         const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
                         buf[NPOS..].copy_from_slice(&u.to_bytes());
                         let pos = byteuvar_pos(&buf);
-                        self.header(H4::from_bytevar_u_pos(pos), L4::$iname);
+                        self.header(H4::from_bytevar_u_pos(pos), l4);
                         self.bytes(&buf[pos..]);
                     })*,
                     $(Value::$fname(f) => {
@@ -225,11 +239,13 @@ impl Writer {
                 U32 u32
                 U64 u64
             }
+            I8 {
+                I8 u8
+            }
             I {
-                I8 i8 u8 zigzag_encode_i8
-                I16 i16 u16 zigzag_encode_i16
-                I32 i32 u32 zigzag_encode_i32
-                I64 i64 u64 zigzag_encode_i64
+                I16 P16 N16 u16
+                I32 P32 N32 u32
+                I64 P64 N64 u64
             }
             F {
                 F16 u16
