@@ -2,8 +2,8 @@ use foundations::{bytes_read::*, byterepr::*};
 use super::*;
 
 #[inline]
-pub fn u64_usize(n: u64) -> Result<usize> {
-    n.try_into().map_err(|_| Error::Size(n))
+pub fn u64_usize(n: u64) -> FatalResult<usize> {
+    n.try_into().map_err(|_| Fatal::Size(n))
 }
 
 struct Reader<'a> {
@@ -245,38 +245,38 @@ impl<'a> Reader<'a> {
                             $(L4::$uname => {
                                 let buf = self.byteuvar_buf(h4)?;
                                 const NPOS: usize = 8 - (($uty::BITS as usize) / 8);
-                                let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
-                                Value::$uname(<$uty>::from_bytes(buf))
+                                let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                                Value::$uname(<$uty>::from_bytes(ubuf))
                             })*,
                             $(L4::$i8name => {
                                 let buf = self.byteuvar_buf(h4)?;
                                 const NPOS: usize = 8 - (($i8ty::BITS as usize) / 8);
-                                let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
-                                let u = <$i8ty>::from_bytes(buf);
+                                let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                                let u = <$i8ty>::from_bytes(ubuf);
                                 Value::$i8name(u)
                             })*,
                             $(L4::$pname => {
                                 let buf = self.byteuvar_buf(h4)?;
                                 const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
-                                let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
-                                let u = <$iuty>::from_bytes(buf);
-                                let i = u.try_into().unwrap(); // TODO Error
+                                let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                                let u = <$iuty>::from_bytes(ubuf);
+                                let i = u.try_into().map_err(|_| Error::IntSign(buf))?;
                                 Value::$iname(i)
                             }
                             L4::$nname => {
                                 let buf = self.byteuvar_buf(h4)?;
                                 const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
-                                let buf = buf[NPOS..].try_into().map_err(|_| Error::BytevarSlicing)?;
-                                let u = <$iuty>::from_bytes(buf);
-                                let i: $ity = u.try_into().unwrap(); // TODO Error
+                                let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                                let u = <$iuty>::from_bytes(ubuf);
+                                let i: $ity = u.try_into().map_err(|_| Error::IntSign(buf))?;
                                 let i = -i; // since from uN cannot be iN::MIN
                                 Value::$iname(i)
                             })*,
                             $(L4::$fname => {
                                 let buf = self.bytefvar_buf(h4)?;
                                 const NPOS: usize = ($fty::BITS as usize) / 8;
-                                let buf = buf[..NPOS].try_into().map_err(|_| Error::BytevarSlicing)?;
-                                Value::$fname(<$fty>::from_bytes(buf))
+                                let ubuf = buf[..NPOS].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                                Value::$fname(<$fty>::from_bytes(ubuf))
                             })*,
                             $($tt)*
                         }
@@ -312,7 +312,7 @@ impl<'a> Reader<'a> {
                             let opt = match opt {
                                 Ext1::None => None,
                                 Ext1::Some => Some(self.val()?),
-                                _ => return Err(Error::FstUnreachable),
+                                _ => return Err(Fatal::FstUnreachable.into()),
                             };
                             Value::Option(t, Box::new(opt))
                         },

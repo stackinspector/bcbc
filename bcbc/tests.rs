@@ -73,5 +73,37 @@ fn test() {
         7e ff fedcba98765432
         4e  13 03 0a 01 00  c3 07 09 0e 2e
         ")
-    )
+    );
+
+    macro_rules! err_case {
+        ($exp:expr, $err:expr) => {{
+            let err = Value::decode(&$exp).unwrap_err();
+            assert_eq!(err, $err);
+        }};
+    }
+
+    err_case!(
+        hex!("7a ffffffffffffffff"),
+        Error::IntSign(hex!("ffffffffffffffff"))
+    );
+
+    err_case!(
+        hex!("0e 000000"),
+        Error::TooLong(3)
+    );
+
+    err_case!(
+        hex!("89 426572796c736f66"),
+        Error::TooShort((8, 9))
+    );
+
+    err_case!(
+        hex!("6e ff"),
+        Error::Tag(0xff)
+    );
+
+    err_case!(
+        hex!("82 ffff"),
+        Error::Utf8(String::from_utf8(hex!("ffff").into()).unwrap_err())
+    );
 }

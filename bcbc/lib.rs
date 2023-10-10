@@ -55,7 +55,7 @@ num_enum! {
         CEnum  = 0xd,
         Enum   = 0xe,
         Struct = 0xf,
-    } as u8 else Error::H4
+    } as u8 else Fatal::H4
 }
 
 impl H4 {
@@ -63,7 +63,7 @@ impl H4 {
         (*self as u8) < 0x8
     }
 
-    pub const fn to_bytevar_u_pos(self) -> Result<usize> {
+    pub const fn to_bytevar_u_pos(self) -> FatalResult<usize> {
         Ok(match self {
             H4::N1 => 7,
             H4::N2 => 6,
@@ -73,11 +73,11 @@ impl H4 {
             H4::N6 => 2,
             H4::N7 => 1,
             H4::N8 => 0,
-            _ => return Err(Error::H4ToN(self)),
+            _ => return Err(Fatal::H4ToN(self)),
         })
     }
 
-    pub const fn to_bytevar_f_pos(self) -> Result<usize> {
+    pub const fn to_bytevar_f_pos(self) -> FatalResult<usize> {
         Ok(match self {
             H4::N1 => 1,
             H4::N2 => 2,
@@ -87,11 +87,11 @@ impl H4 {
             H4::N6 => 6,
             H4::N7 => 7,
             H4::N8 => 8,
-            _ => return Err(Error::H4ToN(self)),
+            _ => return Err(Fatal::H4ToN(self)),
         })
     }
 
-    pub const fn to_ext1(self) -> Result<Ext1> {
+    pub const fn to_ext1(self) -> FatalResult<Ext1> {
         Ok(match self {
             H4::N1 => Ext1::Unit,
             H4::N2 => Ext1::False,
@@ -101,12 +101,12 @@ impl H4 {
             H4::N6 => Ext1::Alias,
             H4::N7 => Ext1::Type,
             H4::N8 => Ext1::TypeId,
-            _ => return Err(Error::H4ToExt1(self)),
+            _ => return Err(Fatal::H4ToExt1(self)),
         })
     }
 
-    pub const fn from_bytevar_u_pos(pos: usize) -> H4 {
-        match pos {
+    pub const fn from_bytevar_u_pos(pos: usize) -> FatalResult<H4> {
+        Ok(match pos {
             7 => H4::N1,
             6 => H4::N2,
             5 => H4::N3,
@@ -115,12 +115,12 @@ impl H4 {
             2 => H4::N6,
             1 => H4::N7,
             0 => H4::N8,
-            _ => todo!(),
-        }
+            _ => return Err(Fatal::NToH4(pos)),
+        })
     }
 
-    pub const fn from_bytevar_f_pos(pos: usize) -> H4 {
-        match pos {
+    pub const fn from_bytevar_f_pos(pos: usize) -> FatalResult<H4> {
+        Ok(match pos {
             1 => H4::N1,
             2 => H4::N2,
             3 => H4::N3,
@@ -129,8 +129,8 @@ impl H4 {
             6 => H4::N6,
             7 => H4::N7,
             8 => H4::N8,
-            _ => todo!(),
-        }
+            _ => return Err(Fatal::NToH4(pos)),
+        })
     }
 
     pub const fn from_ext1(ext1: Ext1) -> H4 {
@@ -165,7 +165,7 @@ num_enum! {
         F64  = 0xd,
         EXT1 = 0xe,
         EXT2 = 0xf,
-    } as u8 else Error::L4
+    } as u8 else Fatal::L4
 }
 
 #[inline]
@@ -188,7 +188,7 @@ num_enum! {
         Alias  = 0x5,
         Type   = 0x6,
         TypeId = 0x7,
-    } as u8 else Error::Ext1
+    } as u8 else Fatal::Ext1
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -272,30 +272,37 @@ pub trait Schema {
     fn deserialize(val: Value) -> Self;
 }
 
-// TODO determine error and fatal
 error_enum! {
-    #[derive(Debug)]
+    #[derive(Clone, Debug, PartialEq, Eq)]
     pub enum Error {
-        FloatL4(u8),
         TooShort((usize, usize)),
         TooLong(usize),
         Tag(u8),
-        H4(u8),
-        L4(u8),
-        Ext1(u8),
-        H4ToN(H4),
-        H4ToExt1(H4),
-        Size(u64),
-        // waiting for flow-sensitive typing implemented
-        FstUnreachable,
-        // TODO debug vars
-        BytevarSlicing,
+        IntSign([u8; 8]),
     } convert {
         Utf8 => std::string::FromUtf8Error,
+        Fatal => Fatal,
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Fatal {
+    H4(u8),
+    L4(u8),
+    Ext1(u8),
+    H4ToN(H4),
+    NToH4(usize),
+    H4ToExt1(H4),
+    Size(u64),
+    // waiting for flow-sensitive typing implemented
+    FstUnreachable,
+    // TODO debug vars
+    BytevarSlicing,
+}
+
+// TODO: use uniform Error like serde_json?
 type Result<T> = core::result::Result<T, Error>;
+type FatalResult<T> = core::result::Result<T, Fatal>;
 
 pub mod casting;
 pub mod reader;
