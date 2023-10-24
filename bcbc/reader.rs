@@ -136,20 +136,6 @@ impl<'a> Reader<'a> {
         })
     }
 
-    fn byteuvar_buf(&mut self, h4: H4) -> Result<[u8; 8]> {
-        let pos = h4.to_bytevar_u_pos()?;
-        let mut buf = [0; 8];
-        self.read_exact(&mut buf[pos..])?;
-        Ok(buf)
-    }
-
-    fn bytefvar_buf(&mut self, h4: H4) -> Result<[u8; 8]> {
-        let pos = h4.to_bytevar_f_pos()?;
-        let mut buf = [0; 8];
-        self.read_exact(&mut buf[..pos])?;
-        Ok(buf)
-    }
-
     fn extvar(&mut self, l4: L4) -> Result<u64> {
         Ok(match l4 {
             EXT8 => self.u8()? as u64,
@@ -243,29 +229,53 @@ impl<'a> Reader<'a> {
                     ) => {
                         match l4 {
                             $(L4::$uname => {
-                                let buf = self.byteuvar_buf(h4)?;
+                                let len = h4.to_bytevar_len()?;
+                                let pos = 8 - len;
+                                let mut buf = [0; 8];
+                                self.read_exact(&mut buf[pos..])?;
                                 const NPOS: usize = 8 - (($uty::BITS as usize) / 8);
+                                if pos < NPOS {
+                                    return Err(Error::BytevarTooLong(pos, NPOS, buf));
+                                }
                                 let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 Value::$uname(<$uty>::from_bytes(ubuf))
                             })*,
                             $(L4::$i8name => {
-                                let buf = self.byteuvar_buf(h4)?;
+                                let len = h4.to_bytevar_len()?;
+                                let pos = 8 - len;
+                                let mut buf = [0; 8];
+                                self.read_exact(&mut buf[pos..])?;
                                 const NPOS: usize = 8 - (($i8ty::BITS as usize) / 8);
+                                if pos < NPOS {
+                                    return Err(Error::BytevarTooLong(pos, NPOS, buf));
+                                }
                                 let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$i8ty>::from_bytes(ubuf);
                                 Value::$i8name(u)
                             })*,
                             $(L4::$pname => {
-                                let buf = self.byteuvar_buf(h4)?;
+                                let len = h4.to_bytevar_len()?;
+                                let pos = 8 - len;
+                                let mut buf = [0; 8];
+                                self.read_exact(&mut buf[pos..])?;
                                 const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
+                                if pos < NPOS {
+                                    return Err(Error::BytevarTooLong(pos, NPOS, buf));
+                                }
                                 let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$iuty>::from_bytes(ubuf);
                                 let i = u.try_into().map_err(|_| Error::IntSign(buf))?;
                                 Value::$iname(i)
                             }
                             L4::$nname => {
-                                let buf = self.byteuvar_buf(h4)?;
+                                let len = h4.to_bytevar_len()?;
+                                let pos = 8 - len;
+                                let mut buf = [0; 8];
+                                self.read_exact(&mut buf[pos..])?;
                                 const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
+                                if pos < NPOS {
+                                    return Err(Error::BytevarTooLong(pos, NPOS, buf));
+                                }
                                 let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$iuty>::from_bytes(ubuf);
                                 let i: $ity = u.try_into().map_err(|_| Error::IntSign(buf))?;
@@ -273,8 +283,14 @@ impl<'a> Reader<'a> {
                                 Value::$iname(i)
                             })*,
                             $(L4::$fname => {
-                                let buf = self.bytefvar_buf(h4)?;
+                                let len = h4.to_bytevar_len()?;
+                                let pos = len;
+                                let mut buf = [0; 8];
+                                self.read_exact(&mut buf[..pos])?;
                                 const NPOS: usize = ($fty::BITS as usize) / 8;
+                                if pos > NPOS {
+                                    return Err(Error::BytevarTooLong(pos, NPOS, buf));
+                                }
                                 let ubuf = buf[..NPOS].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 Value::$fname(<$fty>::from_bytes(ubuf))
                             })*,
@@ -330,7 +346,7 @@ impl<'a> Reader<'a> {
                             Value::TypeId(r)
                         },
                     },
-                    L4::EXT2 => todo!(),
+                    L4::EXT2 => return Err(Error::Ext2NotImplemented),
                 }
             },
         })
@@ -343,5 +359,11 @@ impl Value {
         let val = reader.val()?;
         reader.finish()?;
         Ok(val)
+    }
+
+    pub fn decode_first_value(buf: &[u8]) -> (Result<Value>, &[u8]) {
+        let mut reader = Reader::new(buf);
+        let res = reader.val();
+        (res, reader.bytes)
     }
 }

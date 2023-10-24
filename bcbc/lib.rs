@@ -180,6 +180,8 @@ error_enum! {
         TooLong(usize),
         Tag(u8),
         IntSign([u8; 8]),
+        BytevarTooLong(usize, usize, [u8; 8]),
+        Ext2NotImplemented,
     } convert {
         Utf8 => std::string::FromUtf8Error,
         Fatal => Fatal,

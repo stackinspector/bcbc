@@ -194,7 +194,8 @@ impl Writer {
                         const NPOS: usize = 8 - (($uty::BITS as usize) / 8);
                         buf[NPOS..].copy_from_slice(&u.to_bytes());
                         let pos = byteuvar_pos(&buf);
-                        self.header(H4::from_bytevar_u_pos(pos).unwrap(), L4::$uname);
+                        let len = 8 - pos;
+                        self.header(H4::from_bytevar_len(len).unwrap(), L4::$uname);
                         self.bytes(&buf[pos..]);
                     })*,
                     $(Value::$i8name(i) => {
@@ -202,7 +203,8 @@ impl Writer {
                         const NPOS: usize = 8 - (($i8uty::BITS as usize) / 8);
                         buf[NPOS..].copy_from_slice(&i.to_bytes());
                         let pos = byteuvar_pos(&buf);
-                        self.header(H4::from_bytevar_u_pos(pos).unwrap(), L4::$i8name);
+                        let len = 8 - pos;
+                        self.header(H4::from_bytevar_len(len).unwrap(), L4::$i8name);
                         self.bytes(&buf[pos..]);
                     })*,
                     $(Value::$iname(i) => {
@@ -216,7 +218,8 @@ impl Writer {
                         const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
                         buf[NPOS..].copy_from_slice(&u.to_bytes());
                         let pos = byteuvar_pos(&buf);
-                        self.header(H4::from_bytevar_u_pos(pos).unwrap(), l4);
+                        let len = 8 - pos;
+                        self.header(H4::from_bytevar_len(len).unwrap(), l4);
                         self.bytes(&buf[pos..]);
                     })*,
                     $(Value::$fname(f) => {
@@ -224,7 +227,8 @@ impl Writer {
                         const NPOS: usize = ($fty::BITS as usize) / 8;
                         buf[..NPOS].copy_from_slice(&f.to_bytes());
                         let pos = bytefvar_pos(&buf);
-                        self.header(H4::from_bytevar_f_pos(pos).unwrap(), L4::$fname);
+                        let len = pos;
+                        self.header(H4::from_bytevar_len(len).unwrap(), L4::$fname);
                         self.bytes(&buf[..pos]);
                     })*,
                     $($tt)*

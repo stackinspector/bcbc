@@ -15,21 +15,7 @@ impl H4 {
         (*self as u8) < 0x8
     }
 
-    pub const fn to_bytevar_u_pos(self) -> FatalResult<usize> {
-        Ok(match self {
-            H4::N1 => 7,
-            H4::N2 => 6,
-            H4::N3 => 5,
-            H4::N4 => 4,
-            H4::N5 => 3,
-            H4::N6 => 2,
-            H4::N7 => 1,
-            H4::N8 => 0,
-            _ => return Err(Fatal::H4ToN(self)),
-        })
-    }
-
-    pub const fn to_bytevar_f_pos(self) -> FatalResult<usize> {
+    pub const fn to_bytevar_len(self) -> FatalResult<usize> {
         Ok(match self {
             H4::N1 => 1,
             H4::N2 => 2,
@@ -72,6 +58,20 @@ impl H4 {
     }
 
     pub const fn from_bytevar_f_pos(pos: usize) -> FatalResult<H4> {
+        Ok(match pos {
+            1 => H4::N1,
+            2 => H4::N2,
+            3 => H4::N3,
+            4 => H4::N4,
+            5 => H4::N5,
+            6 => H4::N6,
+            7 => H4::N7,
+            8 => H4::N8,
+            _ => return Err(Fatal::NToH4(pos)),
+        })
+    }
+
+    pub const fn from_bytevar_len(pos: usize) -> FatalResult<H4> {
         Ok(match pos {
             1 => H4::N1,
             2 => H4::N2,
