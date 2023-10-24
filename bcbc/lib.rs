@@ -173,14 +173,19 @@ pub trait Schema {
     fn deserialize(val: Value) -> Self;
 }
 
+// TODO temp solution
+pub const SIZE_MAX: usize = u16::MAX as usize;
+
 error_enum! {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub enum Error {
         TooShort((usize, usize)),
         TooLong(usize),
+        TooLongLen(usize),
         Tag(u8),
         IntSign([u8; 8]),
         BytevarTooLong(usize, usize, [u8; 8]),
+        ExtvarTooLong(L4, u64),
         Ext2NotImplemented,
     } convert {
         Utf8 => std::string::FromUtf8Error,
@@ -196,7 +201,8 @@ pub enum Fatal {
     H4ToN(H4),
     NToH4(usize),
     H4ToExt1(H4),
-    Size(u64),
+    ToSize(u64),
+    FromSize(usize),
     // waiting for flow-sensitive typing implemented
     FstUnreachable,
     // TODO debug vars

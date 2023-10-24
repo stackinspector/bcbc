@@ -1,11 +1,6 @@
 use foundations::{bytes_read::*, byterepr::*};
 use super::*;
 
-#[inline]
-fn u64_usize(n: u64) -> FatalResult<usize> {
-    n.try_into().map_err(|_| Fatal::Size(n))
-}
-
 struct Reader<'a> {
     bytes: &'a [u8],
 }
@@ -137,17 +132,35 @@ impl<'a> Reader<'a> {
     }
 
     fn extvar(&mut self, l4: L4) -> Result<u64> {
-        Ok(match l4 {
+        let n = match l4 {
             EXT8 => self.u8()? as u64,
             EXT16 => self.u16()? as u64,
             EXT32 => self.u32()? as u64,
             EXT64 => self.u64()?,
             s => (s as u8) as u64,
-        })
+        };
+        let long = match l4 {
+            EXT8 => n <= u8::MAX as u64,
+            EXT16 => n <= u16::MAX as u64,
+            EXT32 => n <= u32::MAX as u64,
+            EXT64 => n <= u64::MAX,
+            _ => false,
+        };
+        if long {
+            Err(Error::ExtvarTooLong(l4, n))
+        } else {
+            Ok(n)
+        }
     }
 
     fn extszvar(&mut self, l4: L4) -> Result<usize> {
-        Ok(u64_usize(self.extvar(l4)?)?)
+        let sz = self.extvar(l4)?;
+        let sz = sz.try_into().map_err(|_| Fatal::ToSize(sz))?;
+        if sz <= SIZE_MAX {
+            Ok(sz)
+        } else {
+            Err(Error::TooLongLen(sz))
+        }
     }
 
     fn val_seq(&mut self, size: usize) -> Result<Vec<Value>> {

@@ -3,11 +3,6 @@ use super::*;
 
 // TODO writer error?
 
-#[inline]
-pub fn usize_u64(n: usize) -> u64 {
-    n.try_into().expect("FATAL: usize length to u64 error")
-}
-
 macro_rules! num_impl {
     ($($num:tt)*) => {$(
         fn $num(&mut self, n: $num) {
@@ -158,7 +153,7 @@ impl Writer {
     }
 
     fn extszvar(&mut self, h4: H4, sz: usize) {
-        self.extvar(h4, usize_u64(sz))
+        self.extvar(h4, sz.try_into().map_err(|_| Fatal::FromSize(sz)).unwrap())
     }
 
     fn val_seq(&mut self, s: &Vec<Value>) {
