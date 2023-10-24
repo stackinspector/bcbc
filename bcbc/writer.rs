@@ -11,24 +11,6 @@ macro_rules! num_impl {
     )*};
 }
 
-fn byteuvar_len(buf: &[u8; 8]) -> usize {
-    for (i, b) in buf.iter().enumerate() {
-        if *b != 0 {
-            return 8 - i;
-        }
-    }
-    1
-}
-
-fn bytefvar_len(buf: &[u8; 8]) -> usize {
-    for (i, b) in buf.iter().rev().enumerate() {
-        if *b != 0 {
-            return 8 - i;
-        }
-    }
-    1
-}
-
 struct Writer {
     bytes: Vec<u8>,
 }
@@ -184,7 +166,7 @@ impl Writer {
                         let mut buf = [0; 8];
                         const NLEN: usize = core::mem::size_of::<$uty>();
                         buf[(8 - NLEN)..].copy_from_slice(&u.to_bytes());
-                        let len = byteuvar_len(&buf);
+                        let len = casting::byteuvar_len(&buf);
                         self.header(H4::from_bytevar_len(len).unwrap(), L4::$uname);
                         self.bytes(&buf[(8 - len)..]);
                     })*,
@@ -192,12 +174,12 @@ impl Writer {
                         let mut buf = [0; 8];
                         const NLEN: usize = core::mem::size_of::<$i8uty>();
                         buf[(8 - NLEN)..].copy_from_slice(&i.to_bytes());
-                        let len = byteuvar_len(&buf);
+                        let len = casting::byteuvar_len(&buf);
                         self.header(H4::from_bytevar_len(len).unwrap(), L4::$i8name);
                         self.bytes(&buf[(8 - len)..]);
                     })*,
                     $(Value::$iname(i) => {
-                        let l4 = if i.is_positive() {
+                        let l4 = if !i.is_negative() {
                             L4::$pname
                         } else {
                             L4::$nname
@@ -206,7 +188,7 @@ impl Writer {
                         let mut buf = [0; 8];
                         const NLEN: usize = core::mem::size_of::<$iuty>();
                         buf[(8 - NLEN)..].copy_from_slice(&u.to_bytes());
-                        let len = byteuvar_len(&buf);
+                        let len = casting::byteuvar_len(&buf);
                         self.header(H4::from_bytevar_len(len).unwrap(), l4);
                         self.bytes(&buf[(8 - len)..]);
                     })*,
@@ -214,7 +196,7 @@ impl Writer {
                         let mut buf = [0; 8];
                         const NLEN: usize = core::mem::size_of::<$fty>();
                         buf[..NLEN].copy_from_slice(&f.to_bytes());
-                        let len = bytefvar_len(&buf);
+                        let len = casting::bytefvar_len(&buf);
                         self.header(H4::from_bytevar_len(len).unwrap(), L4::$fname);
                         self.bytes(&buf[..len]);
                     })*,

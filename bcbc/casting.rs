@@ -1,5 +1,23 @@
 use super::*;
 
+pub fn byteuvar_len(buf: &[u8; 8]) -> usize {
+    for (i, b) in buf.iter().enumerate() {
+        if *b != 0 {
+            return 8 - i;
+        }
+    }
+    1
+}
+
+pub fn bytefvar_len(buf: &[u8; 8]) -> usize {
+    for (i, b) in buf.iter().rev().enumerate() {
+        if *b != 0 {
+            return 8 - i;
+        }
+    }
+    1
+}
+
 #[inline]
 pub const fn from_h4l4(h4: H4, l4: L4) -> u8 {
     (h4 as u8) << 4 | (l4 as u8)

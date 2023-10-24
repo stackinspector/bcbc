@@ -181,11 +181,14 @@ error_enum! {
     pub enum Error {
         TooShort((usize, usize)),
         TooLong(usize),
+        // TODO temp solution
         TooLongLen(usize),
         Tag(u8),
         IntSign([u8; 8]),
-        BytevarTooLong(usize, usize, [u8; 8]),
-        ExtvarTooLong(L4, u64),
+        BytevarLongerThanType(usize, usize, [u8; 8]),
+        BytevarLongerThanExpected(usize, usize, usize, [u8; 8]),
+        BytevarNegZero,
+        ExtvarTooLong(L4, L4, u64),
         Ext2NotImplemented,
     } convert {
         Utf8 => std::string::FromUtf8Error,

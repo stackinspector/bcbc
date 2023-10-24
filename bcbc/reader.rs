@@ -132,24 +132,28 @@ impl<'a> Reader<'a> {
     }
 
     fn extvar(&mut self, l4: L4) -> Result<u64> {
-        let n = match l4 {
+        let u = match l4 {
             EXT8 => self.u8()? as u64,
             EXT16 => self.u16()? as u64,
             EXT32 => self.u32()? as u64,
             EXT64 => self.u64()?,
             s => (s as u8) as u64,
         };
-        let long = match l4 {
-            EXT8 => n <= u8::MAX as u64,
-            EXT16 => n <= u16::MAX as u64,
-            EXT32 => n <= u32::MAX as u64,
-            EXT64 => n <= u64::MAX,
-            _ => false,
-        };
-        if long {
-            Err(Error::ExtvarTooLong(l4, n))
+        let exp_l4 = if u < (EXT8 as u64) {
+            (u as u8).try_into().unwrap()
+        } else if u <= (u8::MAX as u64) {
+            EXT8
+        } else if u <= (u16::MAX as u64) {
+            EXT16
+        } else if u <= (u32::MAX as u64) {
+            EXT32
         } else {
-            Ok(n)
+            EXT64
+        };
+        if exp_l4 != l4 {
+            Err(Error::ExtvarTooLong(l4, exp_l4, u))
+        } else {
+            Ok(u)
         }
     }
 
@@ -247,7 +251,11 @@ impl<'a> Reader<'a> {
                                 self.read_exact(&mut buf[(8 - len)..])?;
                                 const NLEN: usize = core::mem::size_of::<$uty>();
                                 if len > NLEN {
-                                    return Err(Error::BytevarTooLong(len, NLEN, buf));
+                                    return Err(Error::BytevarLongerThanType(len, NLEN, buf));
+                                }
+                                let exp_len = casting::byteuvar_len(&buf);
+                                if len != exp_len {
+                                    return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
                                 }
                                 let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$uty>::from_bytes(ubuf);
@@ -259,7 +267,11 @@ impl<'a> Reader<'a> {
                                 self.read_exact(&mut buf[(8 - len)..])?;
                                 const NLEN: usize = core::mem::size_of::<$i8ty>();
                                 if len > NLEN {
-                                    return Err(Error::BytevarTooLong(len, NLEN, buf));
+                                    return Err(Error::BytevarLongerThanType(len, NLEN, buf));
+                                }
+                                let exp_len = casting::byteuvar_len(&buf);
+                                if len != exp_len {
+                                    return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
                                 }
                                 let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$i8ty>::from_bytes(ubuf);
@@ -271,7 +283,11 @@ impl<'a> Reader<'a> {
                                 self.read_exact(&mut buf[(8 - len)..])?;
                                 const NLEN: usize = core::mem::size_of::<$iuty>();
                                 if len > NLEN {
-                                    return Err(Error::BytevarTooLong(len, NLEN, buf));
+                                    return Err(Error::BytevarLongerThanType(len, NLEN, buf));
+                                }
+                                let exp_len = casting::byteuvar_len(&buf);
+                                if len != exp_len {
+                                    return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
                                 }
                                 let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$iuty>::from_bytes(ubuf);
@@ -284,10 +300,17 @@ impl<'a> Reader<'a> {
                                 self.read_exact(&mut buf[(8 - len)..])?;
                                 const NLEN: usize = core::mem::size_of::<$iuty>();
                                 if len > NLEN {
-                                    return Err(Error::BytevarTooLong(len, NLEN, buf));
+                                    return Err(Error::BytevarLongerThanType(len, NLEN, buf));
+                                }
+                                let exp_len = casting::byteuvar_len(&buf);
+                                if len != exp_len {
+                                    return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
                                 }
                                 let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$iuty>::from_bytes(ubuf);
+                                if u == 0 {
+                                    return Err(Error::BytevarNegZero);
+                                }
                                 let i: $ity = u.try_into().map_err(|_| Error::IntSign(buf))?;
                                 let i = -i; // since from uN cannot be iN::MIN
                                 Value::$iname(i)
@@ -298,7 +321,11 @@ impl<'a> Reader<'a> {
                                 self.read_exact(&mut buf[..len])?;
                                 const NLEN: usize = core::mem::size_of::<$fty>();
                                 if len > NLEN {
-                                    return Err(Error::BytevarTooLong(len, NLEN, buf));
+                                    return Err(Error::BytevarLongerThanType(len, NLEN, buf));
+                                }
+                                let exp_len = casting::bytefvar_len(&buf);
+                                if len != exp_len {
+                                    return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
                                 }
                                 let ubuf = buf[..NLEN].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$fty>::from_bytes(ubuf);

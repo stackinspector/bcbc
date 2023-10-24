@@ -2,7 +2,7 @@ use hex_literal::hex;
 use crate::*;
 
 #[test]
-fn test() {
+fn cases() {
     macro_rules! case {
         ($v:expr, $exp:expr) => {{
             println!("{:?}", &$v);
@@ -74,7 +74,10 @@ fn test() {
         4e  13 03 0a 01 00  c3 07 09 0e 2e
         ")
     );
+}
 
+#[test]
+fn err_cases() {
     macro_rules! err_case {
         ($exp:expr, $err:expr) => {{
             let err = Value::decode(&$exp).unwrap_err();
@@ -106,4 +109,24 @@ fn test() {
         hex!("82 ffff"),
         Error::Utf8(String::from_utf8(hex!("ffff").into()).unwrap_err())
     );
+
+    err_case!(
+        hex!("8c 00"),
+        Error::ExtvarTooLong(EXT8, 0u8.try_into().unwrap(), 0)
+    );
+
+    err_case!(
+        hex!("21 000001"),
+        Error::BytevarLongerThanType(3, 2, hex!("00 00 00 00 00 00 00 01"))
+    );
+
+    err_case!(
+        hex!("11 0001"),
+        Error::BytevarLongerThanExpected(2, 1, 2, hex!("00 00 00 00 00 00 00 01"))
+    );
+
+    err_case!(
+        hex!("0a 00"),
+        Error::BytevarNegZero
+    )
 }
