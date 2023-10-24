@@ -4,7 +4,7 @@ use super::*;
 // TODO writer error?
 
 #[inline]
-pub fn usize_u64(n: usize) -> u64 {
+fn usize_u64(n: usize) -> u64 {
     n.try_into().expect("FATAL: usize length to u64 error")
 }
 
@@ -16,26 +16,22 @@ macro_rules! num_impl {
     )*};
 }
 
-fn byteuvar_pos(buf: &[u8; 8]) -> usize {
-    let mut pos = 7;
+fn byteuvar_len(buf: &[u8; 8]) -> usize {
     for (i, b) in buf.iter().enumerate() {
         if *b != 0 {
-            pos = i;
-            break;
+            return 8 - i;
         }
     }
-    pos
+    1
 }
 
-fn bytefvar_pos(buf: &[u8; 8]) -> usize {
-    let mut pos = 7;
+fn bytefvar_len(buf: &[u8; 8]) -> usize {
     for (i, b) in buf.iter().rev().enumerate() {
         if *b != 0 {
-            pos = i;
-            break;
+            return 8 - i;
         }
     }
-    8 - pos
+    1
 }
 
 struct Writer {
@@ -191,19 +187,21 @@ impl Writer {
                 match val {
                     $(Value::$uname(u) => {
                         let mut buf = [0; 8];
-                        const NPOS: usize = 8 - (($uty::BITS as usize) / 8);
+                        const NLEN: usize = ($uty::BITS as usize) / 8;
+                        const NPOS: usize = 8 - NLEN;
                         buf[NPOS..].copy_from_slice(&u.to_bytes());
-                        let pos = byteuvar_pos(&buf);
-                        let len = 8 - pos;
+                        let len = byteuvar_len(&buf);
+                        let pos = 8 - len;
                         self.header(H4::from_bytevar_len(len).unwrap(), L4::$uname);
                         self.bytes(&buf[pos..]);
                     })*,
                     $(Value::$i8name(i) => {
                         let mut buf = [0; 8];
-                        const NPOS: usize = 8 - (($i8uty::BITS as usize) / 8);
+                        const NLEN: usize = ($i8uty::BITS as usize) / 8;
+                        const NPOS: usize = 8 - NLEN;
                         buf[NPOS..].copy_from_slice(&i.to_bytes());
-                        let pos = byteuvar_pos(&buf);
-                        let len = 8 - pos;
+                        let len = byteuvar_len(&buf);
+                        let pos = 8 - len;
                         self.header(H4::from_bytevar_len(len).unwrap(), L4::$i8name);
                         self.bytes(&buf[pos..]);
                     })*,
@@ -215,19 +213,21 @@ impl Writer {
                         };
                         let u = i.unsigned_abs();
                         let mut buf = [0; 8];
-                        const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
+                        const NLEN: usize = ($iuty::BITS as usize) / 8;
+                        const NPOS: usize = 8 - NLEN;
                         buf[NPOS..].copy_from_slice(&u.to_bytes());
-                        let pos = byteuvar_pos(&buf);
-                        let len = 8 - pos;
+                        let len = byteuvar_len(&buf);
+                        let pos = 8 - len;
                         self.header(H4::from_bytevar_len(len).unwrap(), l4);
                         self.bytes(&buf[pos..]);
                     })*,
                     $(Value::$fname(f) => {
                         let mut buf = [0; 8];
-                        const NPOS: usize = ($fty::BITS as usize) / 8;
+                        const NLEN: usize = ($fty::BITS as usize) / 8;
+                        const NPOS: usize = NLEN;
                         buf[..NPOS].copy_from_slice(&f.to_bytes());
-                        let pos = bytefvar_pos(&buf);
-                        let len = pos;
+                        let len = bytefvar_len(&buf);
+                        let pos = len;
                         self.header(H4::from_bytevar_len(len).unwrap(), L4::$fname);
                         self.bytes(&buf[..pos]);
                     })*,

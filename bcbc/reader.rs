@@ -2,7 +2,7 @@ use foundations::{bytes_read::*, byterepr::*};
 use super::*;
 
 #[inline]
-pub fn u64_usize(n: u64) -> FatalResult<usize> {
+fn u64_usize(n: u64) -> FatalResult<usize> {
     n.try_into().map_err(|_| Fatal::Size(n))
 }
 
@@ -233,9 +233,10 @@ impl<'a> Reader<'a> {
                                 let pos = 8 - len;
                                 let mut buf = [0; 8];
                                 self.read_exact(&mut buf[pos..])?;
-                                const NPOS: usize = 8 - (($uty::BITS as usize) / 8);
-                                if pos < NPOS {
-                                    return Err(Error::BytevarTooLong(pos, NPOS, buf));
+                                const NLEN: usize = ($uty::BITS as usize) / 8;
+                                const NPOS: usize = 8 - NLEN;
+                                if len > NLEN {
+                                    return Err(Error::BytevarTooLong(len, NLEN, buf));
                                 }
                                 let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 Value::$uname(<$uty>::from_bytes(ubuf))
@@ -245,9 +246,10 @@ impl<'a> Reader<'a> {
                                 let pos = 8 - len;
                                 let mut buf = [0; 8];
                                 self.read_exact(&mut buf[pos..])?;
-                                const NPOS: usize = 8 - (($i8ty::BITS as usize) / 8);
-                                if pos < NPOS {
-                                    return Err(Error::BytevarTooLong(pos, NPOS, buf));
+                                const NLEN: usize = ($i8ty::BITS as usize) / 8;
+                                const NPOS: usize = 8 - NLEN;
+                                if len > NLEN {
+                                    return Err(Error::BytevarTooLong(len, NLEN, buf));
                                 }
                                 let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$i8ty>::from_bytes(ubuf);
@@ -258,9 +260,10 @@ impl<'a> Reader<'a> {
                                 let pos = 8 - len;
                                 let mut buf = [0; 8];
                                 self.read_exact(&mut buf[pos..])?;
-                                const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
-                                if pos < NPOS {
-                                    return Err(Error::BytevarTooLong(pos, NPOS, buf));
+                                const NLEN: usize = ($iuty::BITS as usize) / 8;
+                                const NPOS: usize = 8 - NLEN;
+                                if len > NLEN {
+                                    return Err(Error::BytevarTooLong(len, NLEN, buf));
                                 }
                                 let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$iuty>::from_bytes(ubuf);
@@ -272,9 +275,10 @@ impl<'a> Reader<'a> {
                                 let pos = 8 - len;
                                 let mut buf = [0; 8];
                                 self.read_exact(&mut buf[pos..])?;
-                                const NPOS: usize = 8 - (($iuty::BITS as usize) / 8);
-                                if pos < NPOS {
-                                    return Err(Error::BytevarTooLong(pos, NPOS, buf));
+                                const NLEN: usize = ($iuty::BITS as usize) / 8;
+                                const NPOS: usize = 8 - NLEN;
+                                if len > NLEN {
+                                    return Err(Error::BytevarTooLong(len, NLEN, buf));
                                 }
                                 let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$iuty>::from_bytes(ubuf);
@@ -287,9 +291,10 @@ impl<'a> Reader<'a> {
                                 let pos = len;
                                 let mut buf = [0; 8];
                                 self.read_exact(&mut buf[..pos])?;
-                                const NPOS: usize = ($fty::BITS as usize) / 8;
-                                if pos > NPOS {
-                                    return Err(Error::BytevarTooLong(pos, NPOS, buf));
+                                const NLEN: usize = ($fty::BITS as usize) / 8;
+                                const NPOS: usize = NLEN;
+                                if len > NLEN {
+                                    return Err(Error::BytevarTooLong(len, NLEN, buf));
                                 }
                                 let ubuf = buf[..NPOS].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 Value::$fname(<$fty>::from_bytes(ubuf))
