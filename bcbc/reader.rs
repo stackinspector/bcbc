@@ -230,57 +230,50 @@ impl<'a> Reader<'a> {
                         match l4 {
                             $(L4::$uname => {
                                 let len = h4.to_bytevar_len()?;
-                                let pos = 8 - len;
                                 let mut buf = [0; 8];
-                                self.read_exact(&mut buf[pos..])?;
-                                const NLEN: usize = ($uty::BITS as usize) / 8;
-                                const NPOS: usize = 8 - NLEN;
+                                self.read_exact(&mut buf[(8 - len)..])?;
+                                const NLEN: usize = core::mem::size_of::<$uty>();
                                 if len > NLEN {
                                     return Err(Error::BytevarTooLong(len, NLEN, buf));
                                 }
-                                let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
-                                Value::$uname(<$uty>::from_bytes(ubuf))
+                                let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                                let u = <$uty>::from_bytes(ubuf);
+                                Value::$uname(u)
                             })*,
                             $(L4::$i8name => {
                                 let len = h4.to_bytevar_len()?;
-                                let pos = 8 - len;
                                 let mut buf = [0; 8];
-                                self.read_exact(&mut buf[pos..])?;
-                                const NLEN: usize = ($i8ty::BITS as usize) / 8;
-                                const NPOS: usize = 8 - NLEN;
+                                self.read_exact(&mut buf[(8 - len)..])?;
+                                const NLEN: usize = core::mem::size_of::<$i8ty>();
                                 if len > NLEN {
                                     return Err(Error::BytevarTooLong(len, NLEN, buf));
                                 }
-                                let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                                let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$i8ty>::from_bytes(ubuf);
                                 Value::$i8name(u)
                             })*,
                             $(L4::$pname => {
                                 let len = h4.to_bytevar_len()?;
-                                let pos = 8 - len;
                                 let mut buf = [0; 8];
-                                self.read_exact(&mut buf[pos..])?;
-                                const NLEN: usize = ($iuty::BITS as usize) / 8;
-                                const NPOS: usize = 8 - NLEN;
+                                self.read_exact(&mut buf[(8 - len)..])?;
+                                const NLEN: usize = core::mem::size_of::<$iuty>();
                                 if len > NLEN {
                                     return Err(Error::BytevarTooLong(len, NLEN, buf));
                                 }
-                                let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                                let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$iuty>::from_bytes(ubuf);
                                 let i = u.try_into().map_err(|_| Error::IntSign(buf))?;
                                 Value::$iname(i)
                             }
                             L4::$nname => {
                                 let len = h4.to_bytevar_len()?;
-                                let pos = 8 - len;
                                 let mut buf = [0; 8];
-                                self.read_exact(&mut buf[pos..])?;
-                                const NLEN: usize = ($iuty::BITS as usize) / 8;
-                                const NPOS: usize = 8 - NLEN;
+                                self.read_exact(&mut buf[(8 - len)..])?;
+                                const NLEN: usize = core::mem::size_of::<$iuty>();
                                 if len > NLEN {
                                     return Err(Error::BytevarTooLong(len, NLEN, buf));
                                 }
-                                let ubuf = buf[NPOS..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                                let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                                 let u = <$iuty>::from_bytes(ubuf);
                                 let i: $ity = u.try_into().map_err(|_| Error::IntSign(buf))?;
                                 let i = -i; // since from uN cannot be iN::MIN
@@ -288,16 +281,15 @@ impl<'a> Reader<'a> {
                             })*,
                             $(L4::$fname => {
                                 let len = h4.to_bytevar_len()?;
-                                let pos = len;
                                 let mut buf = [0; 8];
-                                self.read_exact(&mut buf[..pos])?;
-                                const NLEN: usize = ($fty::BITS as usize) / 8;
-                                const NPOS: usize = NLEN;
+                                self.read_exact(&mut buf[..len])?;
+                                const NLEN: usize = core::mem::size_of::<$fty>();
                                 if len > NLEN {
                                     return Err(Error::BytevarTooLong(len, NLEN, buf));
                                 }
-                                let ubuf = buf[..NPOS].try_into().map_err(|_| Fatal::BytevarSlicing)?;
-                                Value::$fname(<$fty>::from_bytes(ubuf))
+                                let ubuf = buf[..NLEN].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                                let u = <$fty>::from_bytes(ubuf);
+                                Value::$fname(u)
                             })*,
                             $($tt)*
                         }
