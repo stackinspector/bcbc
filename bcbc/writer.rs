@@ -152,6 +152,27 @@ impl Writer {
     }
 
     fn val(&mut self, val: &Value) {
+        macro_rules! byteuvar_impl {
+            ($n:expr, $nty:tt, $l4:expr) => {
+                let mut buf = [0; 8];
+                const NLEN: usize = core::mem::size_of::<$nty>();
+                buf[(8 - NLEN)..].copy_from_slice(&$n.to_bytes());
+                let len = casting::byteuvar_len(&buf);
+                self.header(H4::from_bytevar_len(len).unwrap(), $l4);
+                self.bytes(&buf[(8 - len)..]);
+            };
+        }
+        macro_rules! bytefvar_impl {
+            ($n:expr, $nty:tt, $l4:expr) => {
+                let mut buf = [0; 8];
+                const NLEN: usize = core::mem::size_of::<$nty>();
+                buf[..NLEN].copy_from_slice(&$n.to_bytes());
+                let len = casting::bytefvar_len(&buf);
+                self.header(H4::from_bytevar_len(len).unwrap(), $l4);
+                self.bytes(&buf[..len]);
+            };
+        }
+
         macro_rules! numval_impl {
             // TODO(Rust): macro on match arms
             (
@@ -163,20 +184,10 @@ impl Writer {
             ) => {
                 match val {
                     $(Value::$uname(u) => {
-                        let mut buf = [0; 8];
-                        const NLEN: usize = core::mem::size_of::<$uty>();
-                        buf[(8 - NLEN)..].copy_from_slice(&u.to_bytes());
-                        let len = casting::byteuvar_len(&buf);
-                        self.header(H4::from_bytevar_len(len).unwrap(), L4::$uname);
-                        self.bytes(&buf[(8 - len)..]);
+                        byteuvar_impl!(u, $uty, L4::$uname);
                     })*,
                     $(Value::$i8name(i) => {
-                        let mut buf = [0; 8];
-                        const NLEN: usize = core::mem::size_of::<$i8uty>();
-                        buf[(8 - NLEN)..].copy_from_slice(&i.to_bytes());
-                        let len = casting::byteuvar_len(&buf);
-                        self.header(H4::from_bytevar_len(len).unwrap(), L4::$i8name);
-                        self.bytes(&buf[(8 - len)..]);
+                        byteuvar_impl!(i, $i8uty, L4::$i8name);
                     })*,
                     $(Value::$iname(i) => {
                         let l4 = if !i.is_negative() {
@@ -185,20 +196,10 @@ impl Writer {
                             L4::$nname
                         };
                         let u = i.unsigned_abs();
-                        let mut buf = [0; 8];
-                        const NLEN: usize = core::mem::size_of::<$iuty>();
-                        buf[(8 - NLEN)..].copy_from_slice(&u.to_bytes());
-                        let len = casting::byteuvar_len(&buf);
-                        self.header(H4::from_bytevar_len(len).unwrap(), l4);
-                        self.bytes(&buf[(8 - len)..]);
+                        byteuvar_impl!(u, $iuty, l4);
                     })*,
                     $(Value::$fname(f) => {
-                        let mut buf = [0; 8];
-                        const NLEN: usize = core::mem::size_of::<$fty>();
-                        buf[..NLEN].copy_from_slice(&f.to_bytes());
-                        let len = casting::bytefvar_len(&buf);
-                        self.header(H4::from_bytevar_len(len).unwrap(), L4::$fname);
-                        self.bytes(&buf[..len]);
+                        bytefvar_impl!(f, $fty, L4::$fname);
                     })*,
                     $($tt)*
                 }

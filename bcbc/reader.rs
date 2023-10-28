@@ -235,6 +235,44 @@ impl<'a> Reader<'a> {
                 Value::Struct(r, s)
             },
             h4 => {
+                macro_rules! byteuvar_impl {
+                    ($nty:tt) => {{
+                        let len = h4.to_bytevar_len()?;
+                        let mut buf = [0; 8];
+                        self.read_exact(&mut buf[(8 - len)..])?;
+                        const NLEN: usize = core::mem::size_of::<$nty>();
+                        if len > NLEN {
+                            return Err(Error::BytevarLongerThanType(len, NLEN, buf));
+                        }
+                        let exp_len = casting::byteuvar_len(&buf);
+                        if len != exp_len {
+                            return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
+                        }
+                        let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                        let u = <$nty>::from_bytes(ubuf);
+                        (u, buf)
+                    }};
+                }
+
+                macro_rules! bytefvar_impl {
+                    ($nty:tt) => {{
+                        let len = h4.to_bytevar_len()?;
+                        let mut buf = [0; 8];
+                        self.read_exact(&mut buf[..len])?;
+                        const NLEN: usize = core::mem::size_of::<$nty>();
+                        if len > NLEN {
+                            return Err(Error::BytevarLongerThanType(len, NLEN, buf));
+                        }
+                        let exp_len = casting::bytefvar_len(&buf);
+                        if len != exp_len {
+                            return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
+                        }
+                        let ubuf = buf[..NLEN].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                        let u = <$nty>::from_bytes(ubuf);
+                        (u, buf)
+                    }};
+                }
+
                 macro_rules! numl4_impl {
                     // TODO(Rust): macro on match arms
                     (
@@ -246,68 +284,20 @@ impl<'a> Reader<'a> {
                     ) => {
                         match l4 {
                             $(L4::$uname => {
-                                let len = h4.to_bytevar_len()?;
-                                let mut buf = [0; 8];
-                                self.read_exact(&mut buf[(8 - len)..])?;
-                                const NLEN: usize = core::mem::size_of::<$uty>();
-                                if len > NLEN {
-                                    return Err(Error::BytevarLongerThanType(len, NLEN, buf));
-                                }
-                                let exp_len = casting::byteuvar_len(&buf);
-                                if len != exp_len {
-                                    return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
-                                }
-                                let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
-                                let u = <$uty>::from_bytes(ubuf);
+                                let (u, _) = byteuvar_impl!($uty);
                                 Value::$uname(u)
                             })*,
                             $(L4::$i8name => {
-                                let len = h4.to_bytevar_len()?;
-                                let mut buf = [0; 8];
-                                self.read_exact(&mut buf[(8 - len)..])?;
-                                const NLEN: usize = core::mem::size_of::<$i8ty>();
-                                if len > NLEN {
-                                    return Err(Error::BytevarLongerThanType(len, NLEN, buf));
-                                }
-                                let exp_len = casting::byteuvar_len(&buf);
-                                if len != exp_len {
-                                    return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
-                                }
-                                let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
-                                let u = <$i8ty>::from_bytes(ubuf);
+                                let (u, _) = byteuvar_impl!($i8ty);
                                 Value::$i8name(u)
                             })*,
                             $(L4::$pname => {
-                                let len = h4.to_bytevar_len()?;
-                                let mut buf = [0; 8];
-                                self.read_exact(&mut buf[(8 - len)..])?;
-                                const NLEN: usize = core::mem::size_of::<$iuty>();
-                                if len > NLEN {
-                                    return Err(Error::BytevarLongerThanType(len, NLEN, buf));
-                                }
-                                let exp_len = casting::byteuvar_len(&buf);
-                                if len != exp_len {
-                                    return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
-                                }
-                                let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
-                                let u = <$iuty>::from_bytes(ubuf);
+                                let (u, buf) = byteuvar_impl!($iuty);
                                 let i = u.try_into().map_err(|_| Error::IntSign(buf))?;
                                 Value::$iname(i)
                             }
                             L4::$nname => {
-                                let len = h4.to_bytevar_len()?;
-                                let mut buf = [0; 8];
-                                self.read_exact(&mut buf[(8 - len)..])?;
-                                const NLEN: usize = core::mem::size_of::<$iuty>();
-                                if len > NLEN {
-                                    return Err(Error::BytevarLongerThanType(len, NLEN, buf));
-                                }
-                                let exp_len = casting::byteuvar_len(&buf);
-                                if len != exp_len {
-                                    return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
-                                }
-                                let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
-                                let u = <$iuty>::from_bytes(ubuf);
+                                let (u, buf) = byteuvar_impl!($iuty);
                                 if u == 0 {
                                     return Err(Error::BytevarNegZero);
                                 }
@@ -316,26 +306,14 @@ impl<'a> Reader<'a> {
                                 Value::$iname(i)
                             })*,
                             $(L4::$fname => {
-                                let len = h4.to_bytevar_len()?;
-                                let mut buf = [0; 8];
-                                self.read_exact(&mut buf[..len])?;
-                                const NLEN: usize = core::mem::size_of::<$fty>();
-                                if len > NLEN {
-                                    return Err(Error::BytevarLongerThanType(len, NLEN, buf));
-                                }
-                                let exp_len = casting::bytefvar_len(&buf);
-                                if len != exp_len {
-                                    return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
-                                }
-                                let ubuf = buf[..NLEN].try_into().map_err(|_| Fatal::BytevarSlicing)?;
-                                let u = <$fty>::from_bytes(ubuf);
+                                let (u, _) = bytefvar_impl!($fty);
                                 Value::$fname(u)
                             })*,
                             $($tt)*
                         }
                     };
                 }
-                
+
                 numl4_impl! {
                     U {
                         U8 u8
