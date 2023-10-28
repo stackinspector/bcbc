@@ -235,41 +235,28 @@ impl<'a> Reader<'a> {
                 Value::Struct(r, s)
             },
             h4 => {
-                macro_rules! byteuvar_impl {
-                    ($nty:tt) => {{
+                macro_rules! bytevar_impl {
+                    ($nty:tt, $rangefn:expr, $lenfn:expr) => {{
                         let len = h4.to_bytevar_len()?;
                         let mut buf = [0; 8];
-                        self.read_exact(&mut buf[(8 - len)..])?;
+                        self.read_exact(&mut buf[$rangefn(len)])?;
                         const NLEN: usize = core::mem::size_of::<$nty>();
                         if len > NLEN {
                             return Err(Error::BytevarLongerThanType(len, NLEN, buf));
                         }
-                        let exp_len = casting::byteuvar_len(&buf);
+                        let exp_len = $lenfn(&buf);
                         if len != exp_len {
                             return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
                         }
-                        let ubuf = buf[(8 - NLEN)..].try_into().map_err(|_| Fatal::BytevarSlicing)?;
+                        let ubuf = buf[$rangefn(NLEN)].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                         let u = <$nty>::from_bytes(ubuf);
                         (u, buf)
                     }};
-                }
-
-                macro_rules! bytefvar_impl {
-                    ($nty:tt) => {{
-                        let len = h4.to_bytevar_len()?;
-                        let mut buf = [0; 8];
-                        self.read_exact(&mut buf[..len])?;
-                        const NLEN: usize = core::mem::size_of::<$nty>();
-                        if len > NLEN {
-                            return Err(Error::BytevarLongerThanType(len, NLEN, buf));
-                        }
-                        let exp_len = casting::bytefvar_len(&buf);
-                        if len != exp_len {
-                            return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
-                        }
-                        let ubuf = buf[..NLEN].try_into().map_err(|_| Fatal::BytevarSlicing)?;
-                        let u = <$nty>::from_bytes(ubuf);
-                        (u, buf)
+                    (U: $nty:tt) => {{
+                        bytevar_impl!($nty, casting::bytevar_urange, casting::bytevar_ulen)
+                    }};
+                    (F: $nty:tt) => {{
+                        bytevar_impl!($nty, casting::bytevar_frange, casting::bytevar_flen)
                     }};
                 }
 
@@ -284,20 +271,20 @@ impl<'a> Reader<'a> {
                     ) => {
                         match l4 {
                             $(L4::$uname => {
-                                let (u, _) = byteuvar_impl!($uty);
+                                let (u, _) = bytevar_impl!(U: $uty);
                                 Value::$uname(u)
                             })*,
                             $(L4::$i8name => {
-                                let (u, _) = byteuvar_impl!($i8ty);
+                                let (u, _) = bytevar_impl!(U: $i8ty);
                                 Value::$i8name(u)
                             })*,
                             $(L4::$pname => {
-                                let (u, buf) = byteuvar_impl!($iuty);
+                                let (u, buf) = bytevar_impl!(U: $iuty);
                                 let i = u.try_into().map_err(|_| Error::IntSign(buf))?;
                                 Value::$iname(i)
                             }
                             L4::$nname => {
-                                let (u, buf) = byteuvar_impl!($iuty);
+                                let (u, buf) = bytevar_impl!(U: $iuty);
                                 if u == 0 {
                                     return Err(Error::BytevarNegZero);
                                 }
@@ -306,7 +293,7 @@ impl<'a> Reader<'a> {
                                 Value::$iname(i)
                             })*,
                             $(L4::$fname => {
-                                let (u, _) = bytefvar_impl!($fty);
+                                let (u, _) = bytevar_impl!(F: $fty);
                                 Value::$fname(u)
                             })*,
                             $($tt)*

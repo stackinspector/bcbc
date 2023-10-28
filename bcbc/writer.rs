@@ -152,25 +152,21 @@ impl Writer {
     }
 
     fn val(&mut self, val: &Value) {
-        macro_rules! byteuvar_impl {
-            ($n:expr, $nty:tt, $l4:expr) => {
+        macro_rules! bytevar_impl {
+            ($n:expr, $nty:tt, $l4:expr, $rangefn:expr, $lenfn:expr) => {
                 let mut buf = [0; 8];
                 const NLEN: usize = core::mem::size_of::<$nty>();
-                buf[(8 - NLEN)..].copy_from_slice(&$n.to_bytes());
-                let len = casting::byteuvar_len(&buf);
+                buf[$rangefn(NLEN)].copy_from_slice(&$n.to_bytes());
+                let len = $lenfn(&buf);
                 self.header(H4::from_bytevar_len(len).unwrap(), $l4);
-                self.bytes(&buf[(8 - len)..]);
+                self.bytes(&buf[$rangefn(len)]);
             };
-        }
-        macro_rules! bytefvar_impl {
-            ($n:expr, $nty:tt, $l4:expr) => {
-                let mut buf = [0; 8];
-                const NLEN: usize = core::mem::size_of::<$nty>();
-                buf[..NLEN].copy_from_slice(&$n.to_bytes());
-                let len = casting::bytefvar_len(&buf);
-                self.header(H4::from_bytevar_len(len).unwrap(), $l4);
-                self.bytes(&buf[..len]);
-            };
+            (U: $n:expr, $nty:tt, $l4:expr) => {{
+                bytevar_impl!($n, $nty, $l4, casting::bytevar_urange, casting::bytevar_ulen);
+            }};
+            (F: $n:expr, $nty:tt, $l4:expr) => {{
+                bytevar_impl!($n, $nty, $l4, casting::bytevar_frange, casting::bytevar_flen);
+            }};
         }
 
         macro_rules! numval_impl {
@@ -184,10 +180,10 @@ impl Writer {
             ) => {
                 match val {
                     $(Value::$uname(u) => {
-                        byteuvar_impl!(u, $uty, L4::$uname);
+                        bytevar_impl!(U: u, $uty, L4::$uname);
                     })*,
                     $(Value::$i8name(i) => {
-                        byteuvar_impl!(i, $i8uty, L4::$i8name);
+                        bytevar_impl!(U: i, $i8uty, L4::$i8name);
                     })*,
                     $(Value::$iname(i) => {
                         let l4 = if !i.is_negative() {
@@ -196,10 +192,10 @@ impl Writer {
                             L4::$nname
                         };
                         let u = i.unsigned_abs();
-                        byteuvar_impl!(u, $iuty, l4);
+                        bytevar_impl!(U: u, $iuty, l4);
                     })*,
                     $(Value::$fname(f) => {
-                        bytefvar_impl!(f, $fty, L4::$fname);
+                        bytevar_impl!(F: f, $fty, L4::$fname);
                     })*,
                     $($tt)*
                 }

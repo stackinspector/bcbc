@@ -1,6 +1,16 @@
 use super::*;
 
-pub fn byteuvar_len(buf: &[u8; 8]) -> usize {
+#[inline(always)]
+pub const fn bytevar_urange(len: usize) -> core::ops::RangeFrom<usize> {
+    (8 - len)..
+}
+
+#[inline(always)]
+pub const fn bytevar_frange(len: usize) -> core::ops::RangeTo<usize> {
+    ..len
+}
+
+pub fn bytevar_ulen(buf: &[u8; 8]) -> usize {
     for (i, b) in buf.iter().enumerate() {
         if *b != 0 {
             return 8 - i;
@@ -9,7 +19,7 @@ pub fn byteuvar_len(buf: &[u8; 8]) -> usize {
     1
 }
 
-pub fn bytefvar_len(buf: &[u8; 8]) -> usize {
+pub fn bytevar_flen(buf: &[u8; 8]) -> usize {
     for (i, b) in buf.iter().rev().enumerate() {
         if *b != 0 {
             return 8 - i;
@@ -58,34 +68,6 @@ impl H4 {
             H4::N7 => Ext1::Type,
             H4::N8 => Ext1::TypeId,
             _ => return Err(Fatal::H4ToExt1(self)),
-        })
-    }
-
-    pub const fn from_bytevar_u_pos(pos: usize) -> FatalResult<H4> {
-        Ok(match pos {
-            7 => H4::N1,
-            6 => H4::N2,
-            5 => H4::N3,
-            4 => H4::N4,
-            3 => H4::N5,
-            2 => H4::N6,
-            1 => H4::N7,
-            0 => H4::N8,
-            _ => return Err(Fatal::NToH4(pos)),
-        })
-    }
-
-    pub const fn from_bytevar_f_pos(pos: usize) -> FatalResult<H4> {
-        Ok(match pos {
-            1 => H4::N1,
-            2 => H4::N2,
-            3 => H4::N3,
-            4 => H4::N4,
-            5 => H4::N5,
-            6 => H4::N6,
-            7 => H4::N7,
-            8 => H4::N8,
-            _ => return Err(Fatal::NToH4(pos)),
         })
     }
 
