@@ -105,27 +105,51 @@ impl<'a> Reader<'a> {
 
     fn ty(&mut self) -> Result<Type> {
         let tag = self.u8()?.try_into()?;
-        Ok(match tag {
-            // TODO macro
-            Tag::Unknown => Type::Unknown,
-            Tag::Unit => Type::Unit,
-            Tag::Bool => Type::Bool,
-            Tag::U8 => Type::U8,
-            Tag::U16 => Type::U16,
-            Tag::U32 => Type::U32,
-            Tag::U64 => Type::U64,
-            Tag::I8 => Type::I8,
-            Tag::I16 => Type::I16,
-            Tag::I32 => Type::I32,
-            Tag::I64 => Type::I64,
-            Tag::F16 => Type::F16,
-            Tag::F32 => Type::F32,
-            Tag::F64 => Type::F64,
-            Tag::String => Type::String,
-            Tag::Bytes => Type::Bytes,
-            Tag::Type => Type::Type,
-            Tag::TypeId => Type::TypeId,
+    
+        macro_rules! ty_impl {
+            (
+                direct {$($direct_name:ident)*}
+                typeid {$($typeid_name:ident)*}
+                $($tt:tt)*
+            ) => {
+                match tag {
+                    $(Tag::$direct_name => Type::$direct_name,)*
+                    $($tt)*
+                    $(Tag::$typeid_name => {
+                        let r = self.typeid()?;
+                        Type::$typeid_name(r)
+                    },)*
+                }
+            };
+        }
 
+        Ok(ty_impl! {
+            direct {
+                Unknown
+                Unit
+                Bool
+                U8
+                U16
+                U32
+                U64
+                I8
+                I16
+                I32
+                I64
+                F16
+                F32
+                F64
+                String
+                Bytes
+                Type
+                TypeId
+            }
+            typeid {
+                Alias
+                CEnum
+                Enum
+                Struct
+            }
             Tag::Option => {
                 let t = self.ty()?;
                 Type::Option(Box::new(t))
@@ -139,7 +163,6 @@ impl<'a> Reader<'a> {
                 let tv = self.ty()?;
                 Type::Map(Box::new(tk), Box::new(tv))
             },
-
             Tag::Tuple => {
                 let len = self.u8()? as usize;
                 let mut s = Vec::with_capacity(len);
@@ -148,23 +171,6 @@ impl<'a> Reader<'a> {
                     s.push(t)
                 }
                 Type::Tuple(s)
-            },
-
-            Tag::Alias => {
-                let r = self.typeid()?;
-                Type::Alias(r)
-            },
-            Tag::CEnum => {
-                let r = self.typeid()?;
-                Type::CEnum(r)
-            },
-            Tag::Enum => {
-                let r = self.typeid()?;
-                Type::Enum(r)
-            },
-            Tag::Struct => {
-                let r = self.typeid()?;
-                Type::Struct(r)
             },
         })
     }
