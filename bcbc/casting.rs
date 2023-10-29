@@ -101,95 +101,149 @@ impl H4 {
 
 impl Type {
     pub const fn as_tag(&self) -> Tag {
-        match self {
-            Type::Unknown    => Tag::Unknown,
-            Type::Unit       => Tag::Unit,
-            Type::Bool       => Tag::Bool,
-            Type::U8         => Tag::U8,
-            Type::U16        => Tag::U16,
-            Type::U32        => Tag::U32,
-            Type::U64        => Tag::U64,
-            Type::I8         => Tag::I8,
-            Type::I16        => Tag::I16,
-            Type::I32        => Tag::I32,
-            Type::I64        => Tag::I64,
-            Type::F16        => Tag::F16,
-            Type::F32        => Tag::F32,
-            Type::F64        => Tag::F64,
-            Type::String     => Tag::String,
-            Type::Bytes      => Tag::Bytes,
-            Type::Option(..) => Tag::Option,
-            Type::List(..)   => Tag::List,
-            Type::Map(..)    => Tag::Map,
-            Type::Tuple(..)  => Tag::Tuple,
-            Type::Alias(..)  => Tag::Alias,
-            Type::Enum(..)   => Tag::Enum,
-            Type::CEnum(..)  => Tag::CEnum,
-            Type::Struct(..) => Tag::Struct,
-            Type::Type       => Tag::Type,
-            Type::TypeId     => Tag::TypeId,
+        macro_rules! as_tag_impl {
+            (
+                direct_empty {$($direct_empty_name:ident)*}
+                direct {$($direct_name:ident)*}
+            ) => {
+                match self {
+                    $(Type::$direct_empty_name => Tag::$direct_empty_name,)*
+                    $(Type::$direct_name(..) => Tag::$direct_name,)*
+                }
+            };
+        }
+
+        as_tag_impl! {
+            direct_empty {
+                Unknown
+                Unit
+                Bool
+                U8
+                U16
+                U32
+                U64
+                I8
+                I16
+                I32
+                I64
+                F16
+                F32
+                F64
+                String
+                Bytes
+                Type
+                TypeId
+            }
+            direct {
+                Option
+                List
+                Map
+                Tuple
+                Alias
+                Enum
+                CEnum
+                Struct
+            }
         }
     }
 }
 
 impl Value {
     pub const fn as_tag(&self) -> Tag {
-        match self {
-            Value::Unit          => Tag::Unit,
-            Value::Bool(..)      => Tag::Bool,
-            Value::U8(..)        => Tag::U8,
-            Value::U16(..)       => Tag::U16,
-            Value::U32(..)       => Tag::U32,
-            Value::U64(..)       => Tag::U64,
-            Value::I8(..)        => Tag::I8,
-            Value::I16(..)       => Tag::I16,
-            Value::I32(..)       => Tag::I32,
-            Value::I64(..)       => Tag::I64,
-            Value::F16(..)       => Tag::F16,
-            Value::F32(..)       => Tag::F32,
-            Value::F64(..)       => Tag::F64,
-            Value::String(..)    => Tag::String,
-            Value::Bytes(..)     => Tag::Bytes,
-            Value::Option(..)    => Tag::Option,
-            Value::List(..)      => Tag::List,
-            Value::Map(..)       => Tag::Map,
-            Value::Tuple(..)     => Tag::Tuple,
-            Value::Alias(..)     => Tag::Alias,
-            Value::CEnum(..)     => Tag::CEnum,
-            Value::Enum(..)      => Tag::Enum,
-            Value::Struct(..)    => Tag::Struct,
-            Value::Type(..)      => Tag::Type,
-            Value::TypeId(..)    => Tag::TypeId,
+        macro_rules! as_tag_impl {
+            (
+                direct_empty {$($direct_empty_name:ident)*}
+                direct {$($direct_name:ident)*}
+            ) => {
+                match self {
+                    $(Value::$direct_empty_name => Tag::$direct_empty_name,)*
+                    $(Value::$direct_name(..) => Tag::$direct_name,)*
+                }
+            };
+        }
+
+        as_tag_impl! {
+            direct_empty {
+                Unit
+            }
+            direct {
+                Bool
+                U8
+                U16
+                U32
+                U64
+                I8
+                I16
+                I32
+                I64
+                F16
+                F32
+                F64
+                String
+                Bytes
+                Option
+                List
+                Map
+                Tuple
+                Alias
+                CEnum
+                Enum
+                Struct
+                Type
+                TypeId
+            }
         }
     }
 
     pub fn as_type(&self) -> Type {
-        match self {
-            Value::Unit => Type::Unit,
-            Value::Bool(..) => Type::Bool,
-            Value::U8(..) => Type::U8,
-            Value::U16(..) => Type::U16,
-            Value::U32(..) => Type::U32,
-            Value::U64(..) => Type::U64,
-            Value::I8(..) => Type::I8,
-            Value::I16(..) => Type::I16,
-            Value::I32(..) => Type::I32,
-            Value::I64(..) => Type::I64,
-            Value::F16(..) => Type::F16,
-            Value::F32(..) => Type::F32,
-            Value::F64(..) => Type::F64,
-            Value::String(..) => Type::String,
-            Value::Bytes(..) => Type::Bytes,
+        macro_rules! as_type_impl {
+            (
+                direct_empty {$($direct_empty_name:ident)*}
+                direct {$($direct_name:ident)*}
+                typeid {$($typeid_name:ident)*}
+                $($tt:tt)*
+            ) => {
+                match self {
+                    $(Value::$direct_empty_name => Type::$direct_empty_name,)*
+                    $(Value::$direct_name(..) => Type::$direct_name,)*
+                    $($tt)*
+                    $(Value::$typeid_name(r, ..) => Type::$typeid_name(*r),)*
+                }
+            };
+        }
+
+        as_type_impl! {
+            direct_empty {
+                Unit
+            }
+            direct {
+                Bool
+                U8
+                U16
+                U32
+                U64
+                I8
+                I16
+                I32
+                I64
+                F16
+                F32
+                F64
+                String
+                Bytes
+                Type
+                TypeId
+            }
+            typeid {
+                Alias
+                CEnum
+                Enum
+                Struct
+            }
             Value::Option(t, ..) => Type::Option(Box::new(t.clone())),
             Value::List(t, ..) => Type::List(Box::new(t.clone())),
             Value::Map((tk, tv), ..) => Type::Map(Box::new(tk.clone()), Box::new(tv.clone())),
             Value::Tuple(seq) => Type::Tuple(seq.iter().map(|v| v.as_type()).collect()),
-            Value::Alias(r, ..) => Type::Alias(*r),
-            Value::CEnum(r, ..) => Type::CEnum(*r),
-            Value::Enum(r, ..) => Type::Enum(*r),
-            Value::Struct(r, ..) => Type::Struct(*r),
-            Value::Type(..) => Type::Type,
-            Value::TypeId(..) => Type::TypeId,
         }
     }
 }
@@ -210,9 +264,18 @@ impl Value {
 //     }
 // }
 
-macro_rules! into_v_impl {
+macro_rules! into_impl {
     // TODO auto make fn name with concat_ident! and const case convert
-    ($($fn_name:ident $variant:ident $ty:ty)*) => {$(
+    ($($fn_name:ident | $variant:ident)*) => {$(
+        pub fn $fn_name(self) {
+            if let Value::$variant = self {
+                ()
+            } else {
+                unreachable!()
+            }
+        }
+    )*};
+    ($($fn_name:ident -> $ty:ty | $variant:ident)*) => {$(
         pub fn $fn_name(self) -> $ty {
             if let Value::$variant(v) = self {
                 v
@@ -221,101 +284,50 @@ macro_rules! into_v_impl {
             }
         }
     )*};
+    ($($fn_name:ident -> $ty:ty | $variant:ident($($val_name:ident$(,)*)*) -> $val_fn:block)*) => {$(
+        pub fn $fn_name(self) -> $ty {
+            if let Value::$variant($($val_name,)*) = self {
+                $val_fn
+            } else {
+                unreachable!()
+            }
+        }
+    )*};
 }
 
 impl Value {
-    pub fn into_unit(self) {
-        if let Value::Unit = self {
-            ()
-        } else {
-            unreachable!()
-        }
+    into_impl! {
+        into_unit | Unit
     }
 
-    into_v_impl! {
-        into_bool Bool bool
-        into_u8 U8 u8
-        into_u16 U16 u16
-        into_u32 U32 u32
-        into_u64 U64 u64
-        into_i8 I8 i8
-        into_i16 I16 i16
-        into_i32 I32 i32
-        into_i64 I64 i64
-        // TODO convert?
-        into_f16 F16 u16
-        into_f32 F32 u32
-        into_f64 F64 u64
-        into_string String String
-        into_bytes Bytes Vec<u8>
+    into_impl! {
+        into_bool -> bool      | Bool
+        into_u8 -> u8          | U8
+        into_u16 -> u16        | U16
+        into_u32 -> u32        | U32
+        into_u64 -> u64        | U64
+        into_i8 -> i8          | I8
+        into_i16 -> i16        | I16
+        into_i32 -> i32        | I32
+        into_i64 -> i64        | I64
+        // TODO convert? 
+        into_f16 -> u16        | F16
+        into_f32 -> u32        | F32
+        into_f64 -> u64        | F64
+        into_string -> String  | String
+        into_bytes -> Vec<u8>  | Bytes
+        into_type -> Type      | Type
+        into_type_id -> TypeId | TypeId
     }
 
-    pub fn into_option(self) -> Option<Value> {
-        if let Value::Option(_t, v) = self {
-            *v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_list(self) -> Vec<Value> {
-        if let Value::List(_t, s) = self {
-            s
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_map(self) -> Vec<(Value, Value)> {
-        if let Value::Map(_t, s) = self {
-            s
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_tuple(self) -> Vec<Value> {
-        if let Value::Tuple(s) = self {
-            s
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_alias(self) -> Value {
-        if let Value::Alias(_id, v) = self {
-            *v
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_c_enum(self) -> EnumVariantId {
-        if let Value::CEnum(_id, ev) = self {
-            ev
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_enum(self) -> (EnumVariantId, Value) {
-        if let Value::Enum(_id, ev, v) = self {
-            (ev, *v)
-        } else {
-            unreachable!()
-        }
-    }
-
-    pub fn into_struct(self) -> Vec<Value> {
-        if let Value::Struct(_id, s) = self {
-            s
-        } else {
-            unreachable!()
-        }
-    }
-
-    into_v_impl! {
-        into_type Type Type
-        into_type_id TypeId TypeId
+    into_impl! {
+        into_option -> Option<Value>        | Option(_t, v) -> { *v }
+        into_list -> Vec<Value>             | List(_t, s) -> { s }
+        into_map -> Vec<(Value, Value)>     | Map(_t, s) -> { s }
+        into_tuple -> Vec<Value>            | Tuple(s) -> { s }
+        into_alias -> Value                 | Alias(_id, v) -> { *v }
+        into_c_enum -> EnumVariantId        | CEnum(_id, ev) -> { ev }
+        into_enum -> (EnumVariantId, Value) | Enum(_id, ev, v) -> { (ev, *v) }
+        into_struct -> Vec<Value>           | Struct(_id, s) -> { s }
     }
 }
