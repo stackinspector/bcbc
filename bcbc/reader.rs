@@ -3,6 +3,7 @@ use super::*;
 
 struct Reader<'a> {
     bytes: &'a [u8],
+    pos: usize,
 }
 
 macro_rules! num_impl {
@@ -15,7 +16,7 @@ macro_rules! num_impl {
 
 impl<'a> Reader<'a> {
     fn new(bytes: &'a [u8]) -> Reader<'a> {
-        Reader { bytes }
+        Reader { bytes, pos: 0 }
     }
 
     fn finish(self) -> Result<()> {
@@ -30,6 +31,7 @@ impl<'a> Reader<'a> {
         if sz < self.bytes.len() {
             let (got, rest) = self.bytes.split_at(sz);
             self.bytes = rest;
+            self.pos += sz;
             Ok(got)
         } else {
             Err(Error::TooShort { rest: self.bytes.len(), expected: sz })
@@ -41,6 +43,7 @@ impl<'a> Reader<'a> {
             let (got, rest) = self.bytes.split_at(1);
             let byte = got[0];
             self.bytes = rest;
+            self.pos += 1;
             Ok(byte)
         } else {
             Err(Error::TooShort { rest: 0, expected: 1 })
