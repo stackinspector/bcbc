@@ -1,10 +1,5 @@
-use foundations::{bytes_read::*, byterepr::*};
+use foundations::byterepr::*;
 use super::*;
-
-#[inline(always)]
-fn map_bytes_read_err((rest, expected): (usize, usize)) -> Error {
-    Error::TooShort { rest, expected }
-}
 
 struct Reader<'a> {
     bytes: &'a [u8],
@@ -31,23 +26,57 @@ impl<'a> Reader<'a> {
         }
     }
 
-    #[inline]
-    fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
-        self.bytes.read(buf).map_err(map_bytes_read_err)
+    fn split_out(&mut self, sz: usize) -> Result<&'a [u8]> {
+        if sz < self.bytes.len() {
+            let (got, rest) = self.bytes.split_at(sz);
+            self.bytes = rest;
+            Ok(got)
+        } else {
+            Err(Error::TooShort { rest: self.bytes.len(), expected: sz })
+        }
+    }
+
+    fn read_byte(&mut self) -> Result<u8> {
+        if !self.bytes.is_empty() /* 1 < self.bytes.len() */ {
+            let (got, rest) = self.bytes.split_at(1);
+            let byte = got[0];
+            self.bytes = rest;
+            Ok(byte)
+        } else {
+            Err(Error::TooShort { rest: 0, expected: 1 })
+        }
     }
 
     #[inline]
+    fn split_out_array<const N: usize>(&mut self) -> Result<&'a [u8; N]> {
+        Ok(self.split_out(N)?.try_into().unwrap())
+    }
+
+    fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+        let src = self.split_out(buf.len())?;
+        if buf.len() == 1 {
+            buf[0] = src[0];
+        } else {
+            buf.copy_from_slice(src);
+        }
+        Ok(())
+    }
+
+    // TODO zero copy
+
+    #[inline]
     fn bytes(&mut self, sz: usize) -> Result<Vec<u8>> {
-        self.bytes.read_to_vec(sz).map_err(map_bytes_read_err)
+        Ok(self.split_out(sz)?.to_vec())
     }
 
     #[inline]
     fn bytes_sized<const N: usize>(&mut self) -> Result<[u8; N]> {
-        self.bytes.read_to_array().map_err(map_bytes_read_err)
+        Ok(*self.split_out_array()?)
     }
 
+    #[inline(always)]
     fn u8(&mut self) -> Result<u8> {
-        self.bytes.read_byte().ok_or(Error::TooShort { rest: 0, expected: 1 })
+        self.read_byte()
     }
 
     num_impl! {
@@ -74,6 +103,7 @@ impl<'a> Reader<'a> {
     fn ty(&mut self) -> Result<Type> {
         let tag = self.u8()?.try_into()?;
         Ok(match tag {
+            // TODO macro
             Tag::Unknown => Type::Unknown,
             Tag::Unit => Type::Unit,
             Tag::Bool => Type::Bool,
