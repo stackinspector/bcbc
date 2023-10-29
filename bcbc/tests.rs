@@ -87,17 +87,17 @@ fn err_cases() {
 
     err_case!(
         hex!("7a ffffffffffffffff"),
-        Error::IntSign(hex!("ffffffffffffffff"))
+        Error::BytevarIntSign { buf: [0xff; 8] }
     );
 
     err_case!(
         hex!("0e 000000"),
-        Error::TooLong(3)
+        Error::TooLong { rest: 3 }
     );
 
     err_case!(
         hex!("89 426572796c736f66"),
-        Error::TooShort((8, 9))
+        Error::TooShort { rest: 8, expected: 9 }
     );
 
     err_case!(
@@ -112,21 +112,21 @@ fn err_cases() {
 
     err_case!(
         hex!("8c 00"),
-        Error::ExtvarTooLong(EXT8, 0u8.try_into().unwrap(), 0)
+        Error::ExtvarTooLong { l4: EXT8, exp_l4: 0u8.try_into().unwrap(), u: 0 }
     );
 
     err_case!(
         hex!("21 000001"),
-        Error::BytevarLongerThanType(3, 2, hex!("00 00 00 00 00 00 00 01"))
+        Error::BytevarLongerThanType { len: 3, nlen: 2, buf: hex!("00 00 00 00 00 00 00 01") }
     );
 
     err_case!(
         hex!("11 0001"),
-        Error::BytevarLongerThanExpected(2, 1, 2, hex!("00 00 00 00 00 00 00 01"))
+        Error::BytevarLongerThanExpected { len: 2, nlen: 2, exp_len: 1, buf: hex!("00 00 00 00 00 00 00 01") }
     );
 
     err_case!(
         hex!("0a 00"),
-        Error::BytevarNegZero
+        Error::BytevarNegZero { buf: [0; 8] }
     )
 }

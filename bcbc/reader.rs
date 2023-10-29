@@ -1,6 +1,11 @@
 use foundations::{bytes_read::*, byterepr::*};
 use super::*;
 
+#[inline(always)]
+fn map_bytes_read_err((rest, expected): (usize, usize)) -> Error {
+    Error::TooShort { rest, expected }
+}
+
 struct Reader<'a> {
     bytes: &'a [u8],
 }
@@ -22,27 +27,27 @@ impl<'a> Reader<'a> {
         if self.bytes.is_empty() {
             Ok(())
         } else {
-            Err(Error::TooLong(self.bytes.len()))
+            Err(Error::TooLong { rest: self.bytes.len() })
         }
     }
 
     #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
-        self.bytes.read(buf).map_err(Error::TooShort)
+        self.bytes.read(buf).map_err(map_bytes_read_err)
     }
 
     #[inline]
     fn bytes(&mut self, sz: usize) -> Result<Vec<u8>> {
-        self.bytes.read_to_vec(sz).map_err(Error::TooShort)
+        self.bytes.read_to_vec(sz).map_err(map_bytes_read_err)
     }
 
     #[inline]
     fn bytes_sized<const N: usize>(&mut self) -> Result<[u8; N]> {
-        self.bytes.read_to_array().map_err(Error::TooShort)
+        self.bytes.read_to_array().map_err(map_bytes_read_err)
     }
 
     fn u8(&mut self) -> Result<u8> {
-        self.bytes.read_byte().ok_or(Error::TooShort((0, 1)))
+        self.bytes.read_byte().ok_or(Error::TooShort { rest: 0, expected: 1 })
     }
 
     num_impl! {
@@ -151,7 +156,7 @@ impl<'a> Reader<'a> {
             EXT64
         };
         if exp_l4 != l4 {
-            Err(Error::ExtvarTooLong(l4, exp_l4, u))
+            Err(Error::ExtvarTooLong { l4, exp_l4, u })
         } else {
             Ok(u)
         }
@@ -242,11 +247,11 @@ impl<'a> Reader<'a> {
                         self.read_exact(&mut buf[$rangefn(len)])?;
                         const NLEN: usize = core::mem::size_of::<$nty>();
                         if len > NLEN {
-                            return Err(Error::BytevarLongerThanType(len, NLEN, buf));
+                            return Err(Error::BytevarLongerThanType { len, nlen: NLEN, buf });
                         }
                         let exp_len = $lenfn(&buf);
                         if len != exp_len {
-                            return Err(Error::BytevarLongerThanExpected(len, exp_len, NLEN, buf));
+                            return Err(Error::BytevarLongerThanExpected { len, nlen: NLEN, exp_len, buf });
                         }
                         let ubuf = buf[$rangefn(NLEN)].try_into().map_err(|_| Fatal::BytevarSlicing)?;
                         let u = <$nty>::from_bytes(ubuf);
@@ -280,15 +285,15 @@ impl<'a> Reader<'a> {
                             })*,
                             $(L4::$pname => {
                                 let (u, buf) = bytevar_impl!(U: $iuty);
-                                let i = u.try_into().map_err(|_| Error::IntSign(buf))?;
+                                let i = u.try_into().map_err(|_| Error::BytevarIntSign { buf })?;
                                 Value::$iname(i)
                             }
                             L4::$nname => {
                                 let (u, buf) = bytevar_impl!(U: $iuty);
                                 if u == 0 {
-                                    return Err(Error::BytevarNegZero);
+                                    return Err(Error::BytevarNegZero { buf });
                                 }
-                                let i: $ity = u.try_into().map_err(|_| Error::IntSign(buf))?;
+                                let i: $ity = u.try_into().map_err(|_| Error::BytevarIntSign { buf })?;
                                 let i = -i; // since from uN cannot be iN::MIN
                                 Value::$iname(i)
                             })*,

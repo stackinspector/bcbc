@@ -179,16 +179,16 @@ pub const SIZE_MAX: usize = u16::MAX as usize;
 error_enum! {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub enum Error {
-        TooShort((usize, usize)),
-        TooLong(usize),
+        TooShort { rest: usize, expected: usize },
+        TooLong { rest: usize },
         // TODO temp solution
         TooLongLen(usize),
         Tag(u8),
-        IntSign([u8; 8]),
-        BytevarLongerThanType(usize, usize, [u8; 8]),
-        BytevarLongerThanExpected(usize, usize, usize, [u8; 8]),
-        BytevarNegZero,
-        ExtvarTooLong(L4, L4, u64),
+        BytevarIntSign { buf: [u8; 8] },
+        BytevarLongerThanType { len: usize, nlen: usize, buf: [u8; 8] },
+        BytevarLongerThanExpected { len: usize, nlen: usize, exp_len: usize, buf: [u8; 8] },
+        BytevarNegZero { buf: [u8; 8] },
+        ExtvarTooLong { l4: L4, exp_l4: L4, u: u64 },
         Ext2NotImplemented,
     } convert {
         Utf8 => std::string::FromUtf8Error,
