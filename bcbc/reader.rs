@@ -369,15 +369,15 @@ impl<'a> Reader<'a> {
                         Ext1::Unit => Value::Unit,
                         Ext1::True => Value::Bool(true),
                         Ext1::False => Value::Bool(false),
-                        opt @ (Ext1::None | Ext1::Some) => {
+                        // TODO using fst
+                        Ext1::None => {
                             let t = self.ty()?;
-                            let opt = match opt {
-                                Ext1::None => None,
-                                Ext1::Some => Some(self.val()?),
-                                _ => return Err(Fatal::FstUnreachable.into()),
-                            };
-                            Value::Option(t, Box::new(opt))
-                        },
+                            Value::Option(t, Box::new(None))
+                        }
+                        Ext1::Some => {
+                            let t = self.ty()?;
+                            Value::Option(t, Box::new(Some(self.val()?)))
+                        }
                         Ext1::Alias => {
                             let r = self.typeid()?;
                             let v = self.val()?;

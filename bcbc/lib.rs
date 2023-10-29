@@ -206,8 +206,6 @@ pub enum Fatal {
     H4ToExt1(H4),
     ToSize(u64),
     FromSize(usize),
-    // waiting for flow-sensitive typing implemented
-    FstUnreachable,
     // TODO debug vars
     BytevarSlicing,
 }
