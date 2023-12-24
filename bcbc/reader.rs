@@ -1,62 +1,103 @@
 use foundations::byterepr::*;
 use super::*;
 
-struct Reader<'a> {
+// region: primitives that should provide the same no-panic guarantees as the crate `untrusted`
+
+struct Input<'a> {
     bytes: &'a [u8],
-    pos: usize,
 }
 
-macro_rules! num_impl {
-    ($($num:tt)*) => {$(
-        fn $num(&mut self) -> Result<$num> {
-            self.bytes_sized().map($num::from_bytes)
-        }
-    )*};
+impl<'a> Input<'a> {
+    #[inline(always)]
+    fn byte(&self, pos: usize) -> Option<&u8> {
+        self.bytes.get(pos)
+    }
+
+    #[inline(always)]
+    fn bytes(&self, range: core::ops::Range<usize>) -> Option<Self> {
+        self.bytes.get(range).map(|bytes| Input { bytes })
+    }
+
+    #[inline(always)]
+    const fn len(&self) -> usize {
+        self.bytes.len()
+    }
+
+    #[inline(always)]
+    const fn leak(self) -> &'a [u8] {
+        self.bytes
+    }
+
+    #[inline]
+    fn leak_as_array<const N: usize>(self) -> &'a [u8; N] {
+        self.bytes.try_into().unwrap(/* ? */)
+    }
+
+    // TODO Value<'a>
+    #[inline(always)]
+    fn leak_to_vec(self) -> Vec<u8> {
+        self.bytes.to_vec()
+    }
+}
+
+struct Reader<'a> {
+    input: Input<'a>,
+    pos: usize,
 }
 
 impl<'a> Reader<'a> {
     fn new(bytes: &'a [u8]) -> Reader<'a> {
-        Reader { bytes, pos: 0 }
+        Reader { input: Input { bytes }, pos: 0 }
     }
 
-    fn finish(self) -> Result<()> {
-        if self.bytes.is_empty() {
-            Ok(())
-        } else {
-            Err(Error::TooLong { rest: self.bytes.len() })
-        }
+    #[inline(always)]
+    const fn rest_len(&self) -> usize {
+        self.input.len() - self.pos
     }
 
-    fn split_out(&mut self, sz: usize) -> Result<&'a [u8]> {
-        if sz < self.bytes.len() {
-            let (got, rest) = self.bytes.split_at(sz);
-            self.bytes = rest;
-            self.pos += sz;
-            Ok(got)
-        } else {
-            Err(Error::TooShort { rest: self.bytes.len(), expected: sz })
-        }
+    fn split_out(&mut self, size: usize) -> Result<Input<'a>> {
+        let new_pos = self.pos.checked_add(size)
+            .ok_or(Error::TooLongReadLen(size))?;
+        let ret = self.input.bytes(self.pos..new_pos)
+            .ok_or(Error::TooShort { rest: self.rest_len(), expected: size })?;
+        self.pos = new_pos;
+        Ok(ret)
     }
 
     fn read_byte(&mut self) -> Result<u8> {
-        if !self.bytes.is_empty() /* 1 < self.bytes.len() */ {
-            let (got, rest) = self.bytes.split_at(1);
-            let byte = got[0];
-            self.bytes = rest;
-            self.pos += 1;
-            Ok(byte)
-        } else {
-            Err(Error::TooShort { rest: 0, expected: 1 })
+        match self.input.byte(self.pos) {
+            Some(b) => {
+                // safe from overflow; see https://docs.rs/untrusted/0.9.0/src/untrusted/input.rs.html#39-43
+                self.pos += 1;
+                Ok(*b)
+            },
+            None => Err(Error::TooShort { rest: 0, expected: 1 })
         }
     }
 
+    fn finish(self) -> Result<()> {
+        let rest = self.rest_len();
+        if rest == 0 {
+            Ok(())
+        } else {
+            Err(Error::TooLong { rest })
+        }
+    }
+
+    fn into_rest(mut self) -> Input<'a> {
+        self.split_out(self.rest_len()).unwrap()
+    }
+}
+
+// primitive derivatives
+impl<'a> Reader<'a> {
     #[inline]
     fn split_out_array<const N: usize>(&mut self) -> Result<&'a [u8; N]> {
-        Ok(self.split_out(N)?.try_into().unwrap())
+        Ok(self.split_out(N)?.leak_as_array())
     }
 
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
-        let src = self.split_out(buf.len())?;
+        let src = self.split_out(buf.len())?.leak()/* ? */;
         if buf.len() == 1 {
             buf[0] = src[0];
         } else {
@@ -69,14 +110,34 @@ impl<'a> Reader<'a> {
 
     #[inline]
     fn bytes(&mut self, sz: usize) -> Result<Vec<u8>> {
-        Ok(self.split_out(sz)?.to_vec())
+        Ok(self.split_out(sz)?.leak_to_vec())
     }
 
     #[inline]
     fn bytes_sized<const N: usize>(&mut self) -> Result<[u8; N]> {
         Ok(*self.split_out_array()?)
     }
+}
 
+// We can't avoid allocs completely because of nested values and indefinite-length sequences.
+// So we should check for allocation at sequence creates to ensure no panic.
+// TODO reading sequences with iterator
+#[inline(always)]
+fn seq_vec<T>(size: usize) -> Vec<T> {
+    Vec::with_capacity(size)
+}
+
+// endregion
+
+macro_rules! num_impl {
+    ($($num:tt)*) => {$(
+        fn $num(&mut self) -> Result<$num> {
+            self.bytes_sized().map($num::from_bytes)
+        }
+    )*};
+}
+
+impl<'a> Reader<'a> {
     #[inline(always)]
     fn u8(&mut self) -> Result<u8> {
         self.read_byte()
@@ -165,7 +226,7 @@ impl<'a> Reader<'a> {
             },
             Tag::Tuple => {
                 let len = self.u8()? as usize;
-                let mut s = Vec::with_capacity(len);
+                let mut s = seq_vec(len);
                 for _ in 0..len {
                     let t = self.ty()?;
                     s.push(t)
@@ -212,7 +273,7 @@ impl<'a> Reader<'a> {
     }
 
     fn val_seq(&mut self, size: usize) -> Result<Vec<Value>> {
-        let mut s = Vec::with_capacity(size);
+        let mut s = seq_vec(size);
         for _ in 0..size {
             let v = self.val()?;
             s.push(v)
@@ -221,7 +282,7 @@ impl<'a> Reader<'a> {
     }
 
     fn val_seq_map(&mut self, size: usize) -> Result<Vec<(Value, Value)>> {
-        let mut s = Vec::with_capacity(size);
+        let mut s = seq_vec(size);
         for _ in 0..size {
             let k = self.val()?;
             let v = self.val()?;
@@ -410,6 +471,6 @@ impl Value {
     pub fn decode_first_value(buf: &[u8]) -> (Result<Value>, &[u8]) {
         let mut reader = Reader::new(buf);
         let res = reader.val();
-        (res, reader.bytes)
+        (res, reader.into_rest().leak())
     }
 }

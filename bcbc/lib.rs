@@ -183,6 +183,8 @@ error_enum! {
         TooLong { rest: usize },
         // TODO temp solution
         TooLongLen(usize),
+        // TODO temp solution
+        TooLongReadLen(usize),
         Tag(u8),
         BytevarIntSign { buf: [u8; 8] },
         BytevarLongerThanType { len: usize, nlen: usize, buf: [u8; 8] },
