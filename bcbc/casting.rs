@@ -322,12 +322,12 @@ impl Value {
 
     into_impl! {
         into_option -> Option<Value>        | Option(_t, v) -> { *v }
-        into_list -> Vec<Value>             | List(_t, s) -> { s }
-        into_map -> Vec<(Value, Value)>     | Map(_t, s) -> { s }
-        into_tuple -> Vec<Value>            | Tuple(s) -> { s }
+        into_list -> Box<[Value]>           | List(_t, s) -> { s }
+        into_map -> Box<[(Value, Value)]>   | Map(_t, s) -> { s }
+        into_tuple -> Box<[Value]>          | Tuple(s) -> { s }
         into_alias -> Value                 | Alias(_id, v) -> { *v }
         into_c_enum -> EnumVariantId        | CEnum(_id, ev) -> { ev }
         into_enum -> (EnumVariantId, Value) | Enum(_id, ev, v) -> { (ev, *v) }
-        into_struct -> Vec<Value>           | Struct(_id, s) -> { s }
+        into_struct -> Box<[Value]>         | Struct(_id, s) -> { s }
     }
 }

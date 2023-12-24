@@ -121,10 +121,9 @@ impl<'a> Reader<'a> {
 
 // We can't avoid allocs completely because of nested values and indefinite-length sequences.
 // So we should check for allocation at sequence creates to ensure no panic.
-// TODO reading sequences with iterator
 #[inline(always)]
-fn seq_vec<T>(size: usize) -> Vec<T> {
-    Vec::with_capacity(size)
+fn seq_vec<T, F: FnMut(()) -> Result<T>>(size: usize, f: F) -> Result<Box<[T]>> {
+    core::iter::repeat(()).take(size).map(f).collect()
 }
 
 // endregion
@@ -225,12 +224,8 @@ impl<'a> Reader<'a> {
                 Type::Map(Box::new(tk), Box::new(tv))
             },
             Tag::Tuple => {
-                let len = self.u8()? as usize;
-                let mut s = seq_vec(len);
-                for _ in 0..len {
-                    let t = self.ty()?;
-                    s.push(t)
-                }
+                let size = self.u8()? as usize;
+                let s = seq_vec(size, |_| self.ty())?;
                 Type::Tuple(s)
             },
         })
@@ -272,23 +267,16 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn val_seq(&mut self, size: usize) -> Result<Vec<Value>> {
-        let mut s = seq_vec(size);
-        for _ in 0..size {
-            let v = self.val()?;
-            s.push(v)
-        }
-        Ok(s)
+    fn val_seq(&mut self, size: usize) -> Result<Box<[Value]>> {
+        seq_vec(size, |_| self.val())
     }
 
-    fn val_seq_map(&mut self, size: usize) -> Result<Vec<(Value, Value)>> {
-        let mut s = seq_vec(size);
-        for _ in 0..size {
+    fn val_seq_map(&mut self, size: usize) -> Result<Box<[(Value, Value)]>> {
+        seq_vec(size, |_| {
             let k = self.val()?;
             let v = self.val()?;
-            s.push((k, v))
-        }
-        Ok(s)
+            Ok((k, v))
+        })
     }
 
     fn val(&mut self) -> Result<Value> {

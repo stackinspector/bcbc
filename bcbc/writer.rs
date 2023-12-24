@@ -90,7 +90,7 @@ impl Writer {
                 // should checked in type check
                 self.u8(s.len().try_into().unwrap());
 
-                for t in s {
+                for t in s.as_ref() {
                     self.ty(t);
                 }
 
@@ -138,13 +138,13 @@ impl Writer {
         self.extvar(h4, sz.try_into().map_err(|_| Fatal::FromSize(sz)).unwrap())
     }
 
-    fn val_seq(&mut self, s: &Vec<Value>) {
+    fn val_seq(&mut self, s: &[Value]) {
         for v in s {
             self.val(v);
         }
     }
 
-    fn val_seq_map(&mut self, s: &Vec<(Value, Value)>) {
+    fn val_seq_map(&mut self, s: &[(Value, Value)]) {
         for (k, v) in s {
             self.val(k);
             self.val(v);

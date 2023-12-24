@@ -117,7 +117,7 @@ pub enum Type {
     Option(Box<Type>),
     List(Box<Type>),
     Map(Box<Type>, Box<Type>),
-    Tuple(Vec<Type>),
+    Tuple(Box<[Type]>),
     Alias(TypeId),
     CEnum(TypeId),
     Enum(TypeId),
@@ -148,15 +148,15 @@ pub enum Value {
     Bytes(Vec<u8>),
 
     Option(Type, Box<Option<Value>>),
-    List(Type, Vec<Value>),
-    Map((Type, Type), Vec<(Value, Value)>),
+    List(Type, Box<[Value]>),
+    Map((Type, Type), Box<[(Value, Value)]>),
 
-    Tuple(Vec<Value>),
+    Tuple(Box<[Value]>),
 
     Alias(TypeId, Box<Value>),
     CEnum(TypeId, EnumVariantId),
     Enum(TypeId, EnumVariantId, Box<Value>),
-    Struct(TypeId, Vec<Value>),
+    Struct(TypeId, Box<[Value]>),
 
     Type(Type),
     TypeId(TypeId),

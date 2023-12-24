@@ -1,6 +1,12 @@
 use hex_literal::hex;
 use crate::*;
 
+macro_rules! seq {
+    ($($x:expr),+ $(,)?) => {
+        Box::new([$($x),+])
+    };
+}
+
 #[test]
 fn cases() {
     macro_rules! case {
@@ -18,12 +24,12 @@ fn cases() {
     }
 
     case!(
-        Value::Map((Type::U64, Type::List(Box::new(Type::String))), vec![
-            (Value::U64(123), Value::List(Type::String, vec![
+        Value::Map((Type::U64, Type::List(Box::new(Type::String))), seq![
+            (Value::U64(123), Value::List(Type::String, seq![
                 Value::String("hello".to_owned()),
                 Value::String("goodbye".to_owned()),
             ])),
-            (Value::U64(999999), Value::List(Type::String, vec![
+            (Value::U64(999999), Value::List(Type::String, seq![
                 Value::String("thanks".to_owned()),
                 Value::String("how are you".to_owned()),
             ])),
@@ -36,7 +42,7 @@ fn cases() {
     );
 
     case!(
-        Value::Tuple(vec![
+        Value::Tuple(seq![
             Value::Unit,
             Value::Bool(false),
             Value::I64(-7777777),
@@ -52,7 +58,7 @@ fn cases() {
             Value::Enum(TypeId::Std(StdId { schema: 0xfe, id: 0x00aa }), 163, Box::new(Value::U64(12))),
             Value::Type(Type::List(Box::new(Type::List(Box::new(Type::Struct(TypeId::Anonymous)))))),
             Value::TypeId(TypeId::Hash(HashId { hash: hex!("fedcba98765432") })),
-            Value::Option(Type::Tuple(vec![Type::I64, Type::Unit, Type::Unknown]), Box::new(Some(Value::Tuple(vec![Value::I64(9), Value::Unit, Value::Bool(true)])))),
+            Value::Option(Type::Tuple(seq![Type::I64, Type::Unit, Type::Unknown]), Box::new(Some(Value::Tuple(seq![Value::I64(9), Value::Unit, Value::Bool(true)])))),
         ]),
         hex!("
         cc 10
