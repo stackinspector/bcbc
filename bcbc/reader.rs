@@ -104,12 +104,12 @@ impl<'a> Reader<'a> {
 
     #[inline]
     fn bytes(&mut self, sz: usize) -> Result<Box<[u8]>> {
-        Ok(self.split_out(sz)?.leak().into())
+        Ok(alloc_bytes(self.split_out(sz)?.leak()))
     }
 
     #[inline]
     fn string(&mut self, sz: usize) -> Result<Box<str>> {
-        Ok(core::str::from_utf8(self.split_out(sz)?.leak())?.into())
+        Ok(alloc_bytes(core::str::from_utf8(self.split_out(sz)?.leak())?))
     }
 
     #[inline]
@@ -121,8 +121,18 @@ impl<'a> Reader<'a> {
 // We can't avoid allocs completely because of nested values and indefinite-length sequences.
 // So we should check for allocation at sequence creates to ensure no panic.
 #[inline(always)]
-fn seq_vec<T, F: FnMut(()) -> Result<T>>(size: usize, f: F) -> Result<Box<[T]>> {
+fn alloc_seq<T, F: FnMut(()) -> Result<T>>(size: usize, f: F) -> Result<Box<[T]>> {
     core::iter::repeat(()).take(size).map(f).collect()
+}
+
+// We can't avoid allocs completely because of strings and bytes.
+// So we should check for allocation at owned bytes creates to ensure no panic.
+#[inline(always)]
+fn alloc_bytes<'a, T: ?Sized>(r: &'a T) -> Box<T>
+where
+    Box<T>: From<&'a T>
+{
+    Box::from(r)
 }
 
 // endregion
@@ -224,7 +234,7 @@ impl<'a> Reader<'a> {
             },
             Tag::Tuple => {
                 let size = self.u8()? as usize;
-                let s = seq_vec(size, |_| self.ty())?;
+                let s = alloc_seq(size, |_| self.ty())?;
                 Type::Tuple(s)
             },
         })
@@ -267,11 +277,11 @@ impl<'a> Reader<'a> {
     }
 
     fn val_seq(&mut self, size: usize) -> Result<Box<[Value]>> {
-        seq_vec(size, |_| self.val())
+        alloc_seq(size, |_| self.val())
     }
 
     fn val_seq_map(&mut self, size: usize) -> Result<Box<[(Value, Value)]>> {
-        seq_vec(size, |_| {
+        alloc_seq(size, |_| {
             let k = self.val()?;
             let v = self.val()?;
             Ok((k, v))
