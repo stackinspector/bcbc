@@ -7,6 +7,10 @@ macro_rules! seq {
     };
 }
 
+macro_rules! println {
+    ($($tt:tt)*) => {};
+}
+
 #[test]
 fn cases() {
     macro_rules! case {

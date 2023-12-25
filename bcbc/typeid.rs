@@ -35,10 +35,6 @@ impl StdId {
         self.id
     }
 
-    pub const unsafe fn from_inner_unchecked(schema: u8, id: u16) -> StdId {
-        StdId { schema, id }
-    }
-
     pub const fn from_inner(schema: u8, id: u16) -> Option<StdId> {
         match schema {
             SCHEMA_ANONYMOUS | SCHEMA_HASH => None,

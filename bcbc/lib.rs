@@ -1,3 +1,9 @@
+#![no_std]
+#![deny(unsafe_code)]
+
+extern crate alloc;
+use alloc::boxed::Box;
+
 use foundations::{error_enum, num_enum};
 
 pub type EnumVariantId = u64;
