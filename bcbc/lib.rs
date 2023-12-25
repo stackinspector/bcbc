@@ -144,8 +144,8 @@ pub enum Value {
     F32(u32),
     F64(u64),
 
-    String(String),
-    Bytes(Vec<u8>),
+    String(Box<str>),
+    Bytes(Box<[u8]>),
 
     Option(Type, Box<Option<Value>>),
     List(Type, Box<[Value]>),
@@ -193,7 +193,8 @@ error_enum! {
         ExtvarTooLong { l4: L4, exp_l4: L4, u: u64 },
         Ext2NotImplemented,
     } convert {
-        Utf8 => std::string::FromUtf8Error,
+        // Utf8 => { pos: usize, len: usize, error: core::str::Utf8Error },
+        Utf8 => core::str::Utf8Error,
         Fatal => Fatal,
     }
 }

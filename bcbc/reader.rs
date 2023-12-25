@@ -32,12 +32,6 @@ impl<'a> Input<'a> {
     fn leak_as_array<const N: usize>(self) -> &'a [u8; N] {
         self.bytes.try_into().unwrap(/* ? */)
     }
-
-    // TODO Value<'a>
-    #[inline(always)]
-    fn leak_to_vec(self) -> Vec<u8> {
-        self.bytes.to_vec()
-    }
 }
 
 struct Reader<'a> {
@@ -109,8 +103,13 @@ impl<'a> Reader<'a> {
     // TODO zero copy
 
     #[inline]
-    fn bytes(&mut self, sz: usize) -> Result<Vec<u8>> {
-        Ok(self.split_out(sz)?.leak_to_vec())
+    fn bytes(&mut self, sz: usize) -> Result<Box<[u8]>> {
+        Ok(self.split_out(sz)?.leak().into())
+    }
+
+    #[inline]
+    fn string(&mut self, sz: usize) -> Result<Box<str>> {
+        Ok(core::str::from_utf8(self.split_out(sz)?.leak())?.into())
     }
 
     #[inline]
@@ -284,8 +283,8 @@ impl<'a> Reader<'a> {
         Ok(match h4 {
             H4::String => {
                 let len = self.extszvar(l4)?;
-                let b = self.bytes(len)?;
-                Value::String(String::from_utf8(b)?)
+                let b = self.string(len)?;
+                Value::String(b)
             },
             H4::Bytes => {
                 let len = self.extszvar(l4)?;

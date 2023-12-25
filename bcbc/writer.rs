@@ -234,7 +234,7 @@ impl Writer {
             },
             Value::String(b) => {
                 self.extszvar(H4::String, b.len());
-                self.bytes(b);
+                self.bytes(b.as_ref());
             },
             Value::Bytes(b) => {
                 self.extszvar(H4::Bytes, b.len());

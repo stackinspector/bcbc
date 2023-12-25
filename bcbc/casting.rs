@@ -314,8 +314,8 @@ impl Value {
         into_f16 -> u16        | F16
         into_f32 -> u32        | F32
         into_f64 -> u64        | F64
-        into_string -> String  | String
-        into_bytes -> Vec<u8>  | Bytes
+        into_string -> Box<str>| String
+        into_bytes -> Box<[u8]>| Bytes
         into_type -> Type      | Type
         into_type_id -> TypeId | TypeId
     }

@@ -26,12 +26,12 @@ fn cases() {
     case!(
         Value::Map((Type::U64, Type::List(Box::new(Type::String))), seq![
             (Value::U64(123), Value::List(Type::String, seq![
-                Value::String("hello".to_owned()),
-                Value::String("goodbye".to_owned()),
+                Value::String("hello".into()),
+                Value::String("goodbye".into()),
             ])),
             (Value::U64(999999), Value::List(Type::String, seq![
-                Value::String("thanks".to_owned()),
-                Value::String("how are you".to_owned()),
+                Value::String("thanks".into()),
+                Value::String("how are you".into()),
             ])),
         ]),
         hex!("
@@ -48,11 +48,11 @@ fn cases() {
             Value::I64(-7777777),
             Value::U64(24393),
             Value::F64(50.0_f64.to_bits()),
-            Value::String("Berylsoft".to_owned()),
-            Value::Bytes(b"(\x00)".to_vec()),
+            Value::String("Berylsoft".into()),
+            Value::Bytes((*b"(\x00)").into()),
             Value::Option(Type::String, Box::new(None)),
             Value::Option(Type::Bool, Box::new(Some(Value::Bool(true)))),
-            Value::Alias(TypeId::Hash(HashId { hash: hex!("fedcba98765432") }), Box::new(Value::Bytes(b"\xff".to_vec()))),
+            Value::Alias(TypeId::Hash(HashId { hash: hex!("fedcba98765432") }), Box::new(Value::Bytes((*b"\xff").into()))),
             Value::CEnum(TypeId::Std(StdId { schema: 0x01, id: 0x5f50 }), 11),
             Value::Enum(TypeId::Std(StdId { schema: 0x01, id: 0x5f49 }), 5, Box::new(Value::I64(5))),
             Value::Enum(TypeId::Std(StdId { schema: 0xfe, id: 0x00aa }), 163, Box::new(Value::U64(12))),
@@ -113,7 +113,7 @@ fn err_cases() {
 
     err_case!(
         hex!("82 ffff"),
-        Error::Utf8(String::from_utf8(hex!("ffff").into()).unwrap_err())
+        Error::Utf8(core::str::from_utf8(&hex!("ffff")).unwrap_err())
     );
 
     err_case!(
