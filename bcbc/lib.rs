@@ -3,6 +3,7 @@
 
 extern crate alloc;
 use alloc::boxed::Box;
+use bytes::Bytes;
 
 use foundations::{error_enum, num_enum};
 
@@ -150,8 +151,9 @@ pub enum Value {
     F32(u32),
     F64(u64),
 
-    String(Box<str>),
-    Bytes(Box<[u8]>),
+    // TODO string wrapper
+    String(Bytes),
+    Bytes(Bytes),
 
     Option(Type, Box<Option<Value>>),
     List(Type, Box<[Value]>),

@@ -22,7 +22,7 @@ fn cases() {
             println!("len={}", buf.len());
             println!("{}", hex::encode(&buf));
             assert_eq!(&buf, &$exp);
-            let v2 = Value::decode(&buf).unwrap();
+            let v2 = Value::decode(buf.into()).unwrap();
             assert_eq!($v, v2);
         }};
     }
@@ -53,10 +53,10 @@ fn cases() {
             Value::U64(24393),
             Value::F64(50.0_f64.to_bits()),
             Value::String("Berylsoft".into()),
-            Value::Bytes((*b"(\x00)").into()),
+            Value::Bytes(b"(\x00)".as_slice().into()),
             Value::Option(Type::String, Box::new(None)),
             Value::Option(Type::Bool, Box::new(Some(Value::Bool(true)))),
-            Value::Alias(TypeId::Hash(HashId { hash: hex!("fedcba98765432") }), Box::new(Value::Bytes((*b"\xff").into()))),
+            Value::Alias(TypeId::Hash(HashId { hash: hex!("fedcba98765432") }), Box::new(Value::Bytes(b"\xff".as_slice().into()))),
             Value::CEnum(TypeId::Std(StdId { schema: 0x01, id: 0x5f50 }), 11),
             Value::Enum(TypeId::Std(StdId { schema: 0x01, id: 0x5f49 }), 5, Box::new(Value::I64(5))),
             Value::Enum(TypeId::Std(StdId { schema: 0xfe, id: 0x00aa }), 163, Box::new(Value::U64(12))),
@@ -90,7 +90,7 @@ fn cases() {
 fn err_cases() {
     macro_rules! err_case {
         ($exp:expr, $err:expr) => {{
-            let err = Value::decode(&$exp).unwrap_err();
+            let err = Value::decode($exp.as_slice().into()).unwrap_err();
             assert_eq!(err, $err);
         }};
     }

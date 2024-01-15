@@ -3,11 +3,12 @@ use super::*;
 
 // region: primitives that should provide the same no-panic guarantees as the crate `untrusted`
 
-struct Input<'a> {
-    bytes: &'a [u8],
+// TODO trait Input for struct BytesInput & SliceInput ? How to resolve 'a ?
+struct Input {
+    bytes: Bytes,
 }
 
-impl<'a> Input<'a> {
+impl Input {
     #[inline(always)]
     fn byte(&self, pos: usize) -> Option<&u8> {
         self.bytes.get(pos)
@@ -15,7 +16,13 @@ impl<'a> Input<'a> {
 
     #[inline(always)]
     fn bytes(&self, range: core::ops::Range<usize>) -> Option<Self> {
-        self.bytes.get(range).map(|bytes| Input { bytes })
+        // from <core::ops::Range<usize> as core::slice::SliceIndex<[T]>>::get
+        let core::ops::Range { start, end } = range;
+        if start > end || end > self.len() {
+            None
+        } else {
+            Some(Input { bytes: self.bytes.slice(range) })
+        }
     }
 
     #[inline(always)]
@@ -24,23 +31,24 @@ impl<'a> Input<'a> {
     }
 
     #[inline(always)]
-    const fn leak(self) -> &'a [u8] {
+    fn leak(self) -> Bytes {
         self.bytes
     }
 
+    // copies
     #[inline]
-    fn leak_as_array<const N: usize>(self) -> &'a [u8; N] {
-        self.bytes.try_into().unwrap(/* ? */)
+    fn leak_as_array<const N: usize>(self) -> [u8; N] {
+        self.bytes.as_ref().try_into().unwrap(/* ? */)
     }
 }
 
-struct Reader<'a> {
-    input: Input<'a>,
+struct Reader {
+    input: Input,
     pos: usize,
 }
 
-impl<'a> Reader<'a> {
-    fn new(bytes: &'a [u8]) -> Reader<'a> {
+impl Reader {
+    fn new(bytes: Bytes) -> Reader {
         Reader { input: Input { bytes }, pos: 0 }
     }
 
@@ -49,7 +57,7 @@ impl<'a> Reader<'a> {
         self.input.len() - self.pos
     }
 
-    fn split_out(&mut self, size: usize) -> Result<Input<'a>> {
+    fn split_out(&mut self, size: usize) -> Result<Input> {
         let new_pos = self.pos.checked_add(size)
             .ok_or(Error::TooLongReadLen(size))?;
         let ret = self.input.bytes(self.pos..new_pos)
@@ -58,6 +66,7 @@ impl<'a> Reader<'a> {
         Ok(ret)
     }
 
+    // copies
     fn read_byte(&mut self) -> Result<u8> {
         match self.input.byte(self.pos) {
             Some(b) => {
@@ -78,43 +87,46 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn into_rest(mut self) -> Input<'a> {
+    fn into_rest(mut self) -> Input {
         self.split_out(self.rest_len()).unwrap()
     }
 }
 
 // primitive derivatives
-impl<'a> Reader<'a> {
+impl Reader {
+    // copies
     #[inline]
-    fn split_out_array<const N: usize>(&mut self) -> Result<&'a [u8; N]> {
+    fn split_out_array<const N: usize>(&mut self) -> Result<[u8; N]> {
         Ok(self.split_out(N)?.leak_as_array())
     }
 
+    // copies
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
         let src = self.split_out(buf.len())?.leak()/* ? */;
         if buf.len() == 1 {
             buf[0] = src[0];
         } else {
-            buf.copy_from_slice(src);
+            buf.copy_from_slice(src.as_ref());
         }
         Ok(())
     }
 
-    // TODO zero copy
-
     #[inline]
-    fn bytes(&mut self, sz: usize) -> Result<Box<[u8]>> {
-        Ok(alloc_bytes(self.split_out(sz)?.leak()))
+    fn bytes(&mut self, sz: usize) -> Result<Bytes> {
+        Ok(self.split_out(sz)?.leak())
     }
 
     #[inline]
-    fn string(&mut self, sz: usize) -> Result<Box<str>> {
-        Ok(alloc_bytes(core::str::from_utf8(self.split_out(sz)?.leak())?))
+    fn string(&mut self, sz: usize) -> Result<Bytes> {
+        let bytes = self.bytes(sz)?;
+        let _ = core::str::from_utf8(bytes.as_ref())?;
+        Ok(bytes)
     }
 
+    // copies
     #[inline]
     fn bytes_sized<const N: usize>(&mut self) -> Result<[u8; N]> {
-        Ok(*self.split_out_array()?)
+        Ok(self.split_out_array()?)
     }
 }
 
@@ -123,16 +135,6 @@ impl<'a> Reader<'a> {
 #[inline(always)]
 fn alloc_seq<T, F: FnMut(()) -> Result<T>>(size: usize, f: F) -> Result<Box<[T]>> {
     core::iter::repeat(()).take(size).map(f).collect()
-}
-
-// We can't avoid allocs completely because of strings and bytes.
-// So we should check for allocation at owned bytes creates to ensure no panic.
-#[inline(always)]
-fn alloc_bytes<'a, T: ?Sized>(r: &'a T) -> Box<T>
-where
-    Box<T>: From<&'a T>
-{
-    Box::from(r)
 }
 
 // endregion
@@ -145,7 +147,7 @@ macro_rules! num_impl {
     )*};
 }
 
-impl<'a> Reader<'a> {
+impl Reader {
     #[inline(always)]
     fn u8(&mut self) -> Result<u8> {
         self.read_byte()
@@ -458,14 +460,14 @@ impl<'a> Reader<'a> {
 }
 
 impl Value {
-    pub fn decode(buf: &[u8]) -> Result<Value> {
+    pub fn decode(buf: Bytes) -> Result<Value> {
         let mut reader = Reader::new(buf);
         let val = reader.val()?;
         reader.finish()?;
         Ok(val)
     }
 
-    pub fn decode_first_value(buf: &[u8]) -> (Result<Value>, &[u8]) {
+    pub fn decode_first_value(buf: Bytes) -> (Result<Value>, Bytes) {
         let mut reader = Reader::new(buf);
         let res = reader.val();
         (res, reader.into_rest().leak())
