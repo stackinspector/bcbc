@@ -3,7 +3,6 @@
 
 extern crate alloc;
 use alloc::boxed::Box;
-use bytes::Bytes;
 
 use foundations::{error_enum, num_enum};
 

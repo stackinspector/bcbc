@@ -1,3 +1,5 @@
+#[cfg(feature = "bytes")]
+use bytes::Bytes;
 use foundations::byterepr::*;
 use super::*;
 
@@ -46,10 +48,12 @@ impl<'a> Input for SliceInput<'a> {
     }
 }
 
+#[cfg(feature = "bytes")]
 struct BytesInput {
     bytes: Bytes,
 }
 
+#[cfg(feature = "bytes")]
 impl Input for BytesInput {
     type Storage = Bytes;
 
@@ -97,6 +101,7 @@ impl<'a> Reader<SliceInput<'a>> {
     }
 }
 
+#[cfg(feature = "bytes")]
 impl Reader<BytesInput> {
     fn new(bytes: Bytes) -> Self {
         Reader { input: BytesInput { bytes }, pos: 0 }
@@ -512,6 +517,7 @@ impl<I: Input> Reader<I> {
     }
 }
 
+#[cfg(feature = "bytes")]
 impl Value<Bytes> {
     pub fn decode(buf: Bytes) -> Result<Value<Bytes>> {
         let mut reader = Reader::<BytesInput>::new(buf);
