@@ -148,7 +148,7 @@ impl Type {
     }
 }
 
-impl Value {
+impl<B> Value<B> {
     pub const fn as_tag(&self) -> Tag {
         macro_rules! as_tag_impl {
             (
@@ -248,8 +248,8 @@ impl Value {
     }
 }
 
-impl Value {
-    pub fn serialize_from<T: Schema>(val: T) -> Value {
+impl<B> Value<B> {
+    pub fn serialize_from<T: Schema>(val: T) -> Value<B> {
         val.serialize()
     }
 
@@ -295,7 +295,7 @@ macro_rules! into_impl {
     )*};
 }
 
-impl Value {
+impl<B> Value<B> {
     into_impl! {
         into_unit | Unit
     }
@@ -314,20 +314,20 @@ impl Value {
         into_f16 -> u16        | F16
         into_f32 -> u32        | F32
         into_f64 -> u64        | F64
-        into_string -> Bytes   | String
-        into_bytes -> Bytes    | Bytes
+        into_string -> B       | String
+        into_bytes -> B        | Bytes
         into_type -> Type      | Type
         into_type_id -> TypeId | TypeId
     }
 
     into_impl! {
-        into_option -> Option<Value>        | Option(_t, v) -> { *v }
-        into_list -> Box<[Value]>           | List(_t, s) -> { s }
-        into_map -> Box<[(Value, Value)]>   | Map(_t, s) -> { s }
-        into_tuple -> Box<[Value]>          | Tuple(s) -> { s }
-        into_alias -> Value                 | Alias(_id, v) -> { *v }
-        into_c_enum -> EnumVariantId        | CEnum(_id, ev) -> { ev }
-        into_enum -> (EnumVariantId, Value) | Enum(_id, ev, v) -> { (ev, *v) }
-        into_struct -> Box<[Value]>         | Struct(_id, s) -> { s }
+        into_option -> Option<Value<B>>        | Option(_t, v) -> { *v }
+        into_list -> Box<[Value<B>]>           | List(_t, s) -> { s }
+        into_map -> Box<[(Value<B>, Value<B>)]>| Map(_t, s) -> { s }
+        into_tuple -> Box<[Value<B>]>          | Tuple(s) -> { s }
+        into_alias -> Value<B>                 | Alias(_id, v) -> { *v }
+        into_c_enum -> EnumVariantId           | CEnum(_id, ev) -> { ev }
+        into_enum -> (EnumVariantId, Value<B>) | Enum(_id, ev, v) -> { (ev, *v) }
+        into_struct -> Box<[Value<B>]>         | Struct(_id, s) -> { s }
     }
 }

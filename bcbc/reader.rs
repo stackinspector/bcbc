@@ -3,12 +3,56 @@ use super::*;
 
 // region: primitives that should provide the same no-panic guarantees as the crate `untrusted`
 
-// TODO trait Input for struct BytesInput & SliceInput ? How to resolve 'a ?
-struct Input {
+trait Input: Sized {
+    type Storage: AsRef<[u8]>;
+    fn byte(&self, pos: usize) -> Option<&u8>;
+    fn bytes(&self, range: core::ops::Range<usize>) -> Option<Self>;
+    /* const */ fn len(&self) -> usize;
+    fn leak(self) -> Self::Storage;
+    fn leak_as_array<const N: usize>(self) -> [u8; N];
+}
+
+struct SliceInput<'a> {
+    bytes: &'a [u8],
+}
+
+impl<'a> Input for SliceInput<'a> {
+    type Storage = &'a [u8];
+
+    #[inline(always)]
+    fn byte(&self, pos: usize) -> Option<&u8> {
+        self.bytes.get(pos)
+    }
+
+    #[inline(always)]
+    fn bytes(&self, range: core::ops::Range<usize>) -> Option<Self> {
+        self.bytes.get(range).map(|bytes| SliceInput { bytes })
+    }
+
+    #[inline(always)]
+    /* const */ fn len(&self) -> usize {
+        self.bytes.len()
+    }
+
+    #[inline(always)]
+    /* const */ fn leak(self) -> &'a [u8] {
+        self.bytes
+    }
+
+    #[inline]
+    fn leak_as_array<const N: usize>(self) -> [u8; N] {
+        let r: &[u8; N] = self.bytes.try_into().unwrap(/* ? */);
+        *r
+    }
+}
+
+struct BytesInput {
     bytes: Bytes,
 }
 
-impl Input {
+impl Input for BytesInput {
+    type Storage = Bytes;
+
     #[inline(always)]
     fn byte(&self, pos: usize) -> Option<&u8> {
         self.bytes.get(pos)
@@ -21,12 +65,12 @@ impl Input {
         if start > end || end > self.len() {
             None
         } else {
-            Some(Input { bytes: self.bytes.slice(range) })
+            Some(BytesInput { bytes: self.bytes.slice(range) })
         }
     }
 
     #[inline(always)]
-    const fn len(&self) -> usize {
+    /* const */ fn len(&self) -> usize {
         self.bytes.len()
     }
 
@@ -42,22 +86,30 @@ impl Input {
     }
 }
 
-struct Reader {
-    input: Input,
+struct Reader<I> {
+    input: I,
     pos: usize,
 }
 
-impl Reader {
-    fn new(bytes: Bytes) -> Reader {
-        Reader { input: Input { bytes }, pos: 0 }
+impl<'a> Reader<SliceInput<'a>> {
+    fn new(bytes: &'a [u8]) -> Self {
+        Reader { input: SliceInput { bytes }, pos: 0 }
     }
+}
 
+impl Reader<BytesInput> {
+    fn new(bytes: Bytes) -> Self {
+        Reader { input: BytesInput { bytes }, pos: 0 }
+    }
+}
+
+impl<I: Input> Reader<I> {
     #[inline(always)]
-    const fn rest_len(&self) -> usize {
+    /* const */ fn rest_len(&self) -> usize {
         self.input.len() - self.pos
     }
 
-    fn split_out(&mut self, size: usize) -> Result<Input> {
+    fn split_out(&mut self, size: usize) -> Result<I> {
         let new_pos = self.pos.checked_add(size)
             .ok_or(Error::TooLongReadLen(size))?;
         let ret = self.input.bytes(self.pos..new_pos)
@@ -87,13 +139,13 @@ impl Reader {
         }
     }
 
-    fn into_rest(mut self) -> Input {
+    fn into_rest(mut self) -> I {
         self.split_out(self.rest_len()).unwrap()
     }
 }
 
 // primitive derivatives
-impl Reader {
+impl<I: Input> Reader<I> {
     // copies
     #[inline]
     fn split_out_array<const N: usize>(&mut self) -> Result<[u8; N]> {
@@ -102,22 +154,23 @@ impl Reader {
 
     // copies
     fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
-        let src = self.split_out(buf.len())?.leak()/* ? */;
+        let src = self.split_out(buf.len())?;
         if buf.len() == 1 {
-            buf[0] = src[0];
+            // checked below
+            buf[0] = *src.byte(0).unwrap();
         } else {
-            buf.copy_from_slice(src.as_ref());
+            buf.copy_from_slice(src.leak().as_ref());
         }
         Ok(())
     }
 
     #[inline]
-    fn bytes(&mut self, sz: usize) -> Result<Bytes> {
+    fn bytes(&mut self, sz: usize) -> Result<I::Storage> {
         Ok(self.split_out(sz)?.leak())
     }
 
     #[inline]
-    fn string(&mut self, sz: usize) -> Result<Bytes> {
+    fn string(&mut self, sz: usize) -> Result<I::Storage> {
         let bytes = self.bytes(sz)?;
         let _ = core::str::from_utf8(bytes.as_ref())?;
         Ok(bytes)
@@ -147,7 +200,7 @@ macro_rules! num_impl {
     )*};
 }
 
-impl Reader {
+impl<I: Input> Reader<I> {
     #[inline(always)]
     fn u8(&mut self) -> Result<u8> {
         self.read_byte()
@@ -278,11 +331,11 @@ impl Reader {
         }
     }
 
-    fn val_seq(&mut self, size: usize) -> Result<Box<[Value]>> {
+    fn val_seq(&mut self, size: usize) -> Result<Box<[Value<I::Storage>]>> {
         alloc_seq(size, |_| self.val())
     }
 
-    fn val_seq_map(&mut self, size: usize) -> Result<Box<[(Value, Value)]>> {
+    fn val_seq_map(&mut self, size: usize) -> Result<Box<[(Value<I::Storage>, Value<I::Storage>)]>> {
         alloc_seq(size, |_| {
             let k = self.val()?;
             let v = self.val()?;
@@ -290,7 +343,7 @@ impl Reader {
         })
     }
 
-    fn val(&mut self) -> Result<Value> {
+    fn val(&mut self) -> Result<Value<I::Storage>> {
         let (h4, l4) = casting::to_h4l4(self.u8()?)?;
         Ok(match h4 {
             H4::String => {
@@ -459,16 +512,31 @@ impl Reader {
     }
 }
 
-impl Value {
-    pub fn decode(buf: Bytes) -> Result<Value> {
-        let mut reader = Reader::new(buf);
+impl Value<Bytes> {
+    pub fn decode(buf: Bytes) -> Result<Value<Bytes>> {
+        let mut reader = Reader::<BytesInput>::new(buf);
         let val = reader.val()?;
         reader.finish()?;
         Ok(val)
     }
 
-    pub fn decode_first_value(buf: Bytes) -> (Result<Value>, Bytes) {
-        let mut reader = Reader::new(buf);
+    pub fn decode_first_value(buf: Bytes) -> (Result<Value<Bytes>>, Bytes) {
+        let mut reader = Reader::<BytesInput>::new(buf);
+        let res = reader.val();
+        (res, reader.into_rest().leak())
+    }
+}
+
+impl<'a> Value<&'a [u8]> {
+    pub fn decode(buf: &'a [u8]) -> Result<Value<&'a [u8]>> {
+        let mut reader = Reader::<SliceInput>::new(buf);
+        let val = reader.val()?;
+        reader.finish()?;
+        Ok(val)
+    }
+
+    pub fn decode_first_value(buf: &'a [u8]) -> (Result<Value<&'a [u8]>>, &'a [u8]) {
+        let mut reader = Reader::<SliceInput>::new(buf);
         let res = reader.val();
         (res, reader.into_rest().leak())
     }

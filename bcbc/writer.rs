@@ -27,7 +27,7 @@ impl Writer {
     }
 
     #[inline]
-    fn bytes<B: AsRef<[u8]>>(&mut self, bytes: B) {
+    fn bytes<B2: AsRef<[u8]>>(&mut self, bytes: B2) {
         self.bytes.extend_from_slice(bytes.as_ref());
     }
 
@@ -139,20 +139,20 @@ impl Writer {
         self.extvar(h4, sz.try_into().map_err(|_| Fatal::FromSize(sz)).unwrap())
     }
 
-    fn val_seq(&mut self, s: &[Value]) {
+    fn val_seq<B: AsRef<[u8]>>(&mut self, s: &[Value<B>]) {
         for v in s {
             self.val(v);
         }
     }
 
-    fn val_seq_map(&mut self, s: &[(Value, Value)]) {
+    fn val_seq_map<B: AsRef<[u8]>>(&mut self, s: &[(Value<B>, Value<B>)]) {
         for (k, v) in s {
             self.val(k);
             self.val(v);
         }
     }
 
-    fn val(&mut self, val: &Value) {
+    fn val<B: AsRef<[u8]>>(&mut self, val: &Value<B>) {
         macro_rules! bytevar_impl {
             ($n:expr, $nty:tt, $l4:expr, $rangefn:expr, $lenfn:expr) => {
                 let mut buf = [0; 8];
@@ -234,11 +234,11 @@ impl Writer {
                 }
             },
             Value::String(b) => {
-                self.extszvar(H4::String, b.len());
+                self.extszvar(H4::String, b.as_ref().len());
                 self.bytes(b.as_ref());
             },
             Value::Bytes(b) => {
-                self.extszvar(H4::Bytes, b.len());
+                self.extszvar(H4::Bytes, b.as_ref().len());
                 self.bytes(b);
             },
             Value::Option(t, opt) => {
@@ -297,7 +297,7 @@ impl Writer {
     }
 }
 
-impl Value {
+impl<B: AsRef<[u8]>> Value<B> {
     pub fn encode(&self) -> Vec<u8> {
         let mut writer = Writer::new();
         writer.val(self);

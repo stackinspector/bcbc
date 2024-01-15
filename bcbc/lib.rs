@@ -135,7 +135,7 @@ pub enum Type {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Value {
+pub enum Value<B> {
     Unit,
     Bool(bool),
 
@@ -152,19 +152,19 @@ pub enum Value {
     F64(u64),
 
     // TODO string wrapper
-    String(Bytes),
-    Bytes(Bytes),
+    String(B),
+    Bytes(B),
 
-    Option(Type, Box<Option<Value>>),
-    List(Type, Box<[Value]>),
-    Map((Type, Type), Box<[(Value, Value)]>),
+    Option(Type, Box<Option<Value<B>>>),
+    List(Type, Box<[Value<B>]>),
+    Map((Type, Type), Box<[(Value<B>, Value<B>)]>),
 
-    Tuple(Box<[Value]>),
+    Tuple(Box<[Value<B>]>),
 
-    Alias(TypeId, Box<Value>),
+    Alias(TypeId, Box<Value<B>>),
     CEnum(TypeId, EnumVariantId),
-    Enum(TypeId, EnumVariantId, Box<Value>),
-    Struct(TypeId, Box<[Value]>),
+    Enum(TypeId, EnumVariantId, Box<Value<B>>),
+    Struct(TypeId, Box<[Value<B>]>),
 
     Type(Type),
     TypeId(TypeId),
@@ -177,8 +177,8 @@ pub const EXT64: L4 = L4::EXT2; // 0xf
 
 pub trait Schema {
     const ID: TypeId;
-    fn serialize(self) -> Value;
-    fn deserialize(val: Value) -> Self;
+    fn serialize<B>(self) -> Value<B>;
+    fn deserialize<B>(val: Value<B>) -> Self;
 }
 
 // TODO temp solution

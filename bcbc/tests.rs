@@ -1,6 +1,13 @@
 use hex_literal::hex;
 use crate::*;
 
+type Value<'a> = crate::Value<&'a [u8]>;
+
+#[inline(always)]
+fn b<'a, B: ?Sized + AsRef<[u8]>>(bytes: &'a B) -> &'a [u8] {
+    bytes.as_ref()
+}
+
 macro_rules! seq {
     ($($x:expr),+ $(,)?) => {
         Box::new([$($x),+])
@@ -16,13 +23,13 @@ fn cases() {
     macro_rules! case {
         ($v:expr, $exp:expr) => {{
             println!("{:?}", &$v);
-            let buf = $v.clone().encode();
+            let buf = $v.encode();
             println!("len={}", $exp.len());
             println!("{}", hex::encode(&$exp));
             println!("len={}", buf.len());
             println!("{}", hex::encode(&buf));
             assert_eq!(&buf, &$exp);
-            let v2 = Value::decode(buf.into()).unwrap();
+            let v2 = Value::decode(&buf).unwrap();
             assert_eq!($v, v2);
         }};
     }
@@ -30,12 +37,12 @@ fn cases() {
     case!(
         Value::Map((Type::U64, Type::List(Box::new(Type::String))), seq![
             (Value::U64(123), Value::List(Type::String, seq![
-                Value::String("hello".into()),
-                Value::String("goodbye".into()),
+                Value::String(b("hello")),
+                Value::String(b("goodbye")),
             ])),
             (Value::U64(999999), Value::List(Type::String, seq![
-                Value::String("thanks".into()),
-                Value::String("how are you".into()),
+                Value::String(b("thanks")),
+                Value::String(b("how are you")),
             ])),
         ]),
         hex!("
@@ -52,11 +59,11 @@ fn cases() {
             Value::I64(-7777777),
             Value::U64(24393),
             Value::F64(50.0_f64.to_bits()),
-            Value::String("Berylsoft".into()),
-            Value::Bytes(b"(\x00)".as_slice().into()),
+            Value::String(b("Berylsoft")),
+            Value::Bytes(b(b"(\x00)")),
             Value::Option(Type::String, Box::new(None)),
             Value::Option(Type::Bool, Box::new(Some(Value::Bool(true)))),
-            Value::Alias(TypeId::Hash(HashId { hash: hex!("fedcba98765432") }), Box::new(Value::Bytes(b"\xff".as_slice().into()))),
+            Value::Alias(TypeId::Hash(HashId { hash: hex!("fedcba98765432") }), Box::new(Value::Bytes(b(b"\xff")))),
             Value::CEnum(TypeId::Std(StdId { schema: 0x01, id: 0x5f50 }), 11),
             Value::Enum(TypeId::Std(StdId { schema: 0x01, id: 0x5f49 }), 5, Box::new(Value::I64(5))),
             Value::Enum(TypeId::Std(StdId { schema: 0xfe, id: 0x00aa }), 163, Box::new(Value::U64(12))),
@@ -90,7 +97,7 @@ fn cases() {
 fn err_cases() {
     macro_rules! err_case {
         ($exp:expr, $err:expr) => {{
-            let err = Value::decode($exp.as_slice().into()).unwrap_err();
+            let err = Value::decode(&$exp).unwrap_err();
             assert_eq!(err, $err);
         }};
     }
