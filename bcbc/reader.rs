@@ -5,7 +5,7 @@ use super::*;
 
 // region: primitives that should provide the same no-panic guarantees as the crate `untrusted`
 
-trait Input: Sized {
+pub unsafe trait Input: Sized + From<Self::Storage> {
     type Storage: AsRef<[u8]>;
     fn byte(&self, pos: usize) -> Option<&u8>;
     fn bytes(&self, range: core::ops::Range<usize>) -> Option<Self>;
@@ -18,7 +18,13 @@ struct SliceInput<'a> {
     bytes: &'a [u8],
 }
 
-impl<'a> Input for SliceInput<'a> {
+impl<'a> From<&'a [u8]> for SliceInput<'a> {
+    fn from(bytes: &'a [u8]) -> Self {
+        SliceInput { bytes }
+    }
+}
+
+unsafe impl<'a> Input for SliceInput<'a> {
     type Storage = &'a [u8];
 
     #[inline(always)]
@@ -54,7 +60,14 @@ struct BytesInput {
 }
 
 #[cfg(feature = "bytes")]
-impl Input for BytesInput {
+impl From<Bytes> for BytesInput {
+    fn from(bytes: Bytes) -> Self {
+        BytesInput { bytes }
+    }
+}
+
+#[cfg(feature = "bytes")]
+unsafe impl Input for BytesInput {
     type Storage = Bytes;
 
     #[inline(always)]
@@ -95,20 +108,11 @@ struct Reader<I> {
     pos: usize,
 }
 
-impl<'a> Reader<SliceInput<'a>> {
-    fn new(bytes: &'a [u8]) -> Self {
-        Reader { input: SliceInput { bytes }, pos: 0 }
-    }
-}
-
-#[cfg(feature = "bytes")]
-impl Reader<BytesInput> {
-    fn new(bytes: Bytes) -> Self {
-        Reader { input: BytesInput { bytes }, pos: 0 }
-    }
-}
-
 impl<I: Input> Reader<I> {
+    fn new(bytes: I::Storage) -> Self {
+        Reader { input: bytes.into(), pos: 0 }
+    }
+
     #[inline(always)]
     /* const */ fn rest_len(&self) -> usize {
         self.input.len() - self.pos
@@ -517,32 +521,16 @@ impl<I: Input> Reader<I> {
     }
 }
 
-#[cfg(feature = "bytes")]
-impl Value<Bytes> {
-    pub fn decode(buf: Bytes) -> Result<Value<Bytes>> {
-        let mut reader = Reader::<BytesInput>::new(buf);
+impl<I: Input> Value<I::Storage> {
+    pub fn decode(buf: I::Storage) -> Result<Value<I::Storage>> {
+        let mut reader = Reader::<I>::new(buf);
         let val = reader.val()?;
         reader.finish()?;
         Ok(val)
     }
 
-    pub fn decode_first_value(buf: Bytes) -> (Result<Value<Bytes>>, Bytes) {
-        let mut reader = Reader::<BytesInput>::new(buf);
-        let res = reader.val();
-        (res, reader.into_rest().leak())
-    }
-}
-
-impl<'a> Value<&'a [u8]> {
-    pub fn decode(buf: &'a [u8]) -> Result<Value<&'a [u8]>> {
-        let mut reader = Reader::<SliceInput>::new(buf);
-        let val = reader.val()?;
-        reader.finish()?;
-        Ok(val)
-    }
-
-    pub fn decode_first_value(buf: &'a [u8]) -> (Result<Value<&'a [u8]>>, &'a [u8]) {
-        let mut reader = Reader::<SliceInput>::new(buf);
+    pub fn decode_first_value(buf: I::Storage) -> (Result<Value<I::Storage>>, I::Storage) {
+        let mut reader = Reader::<I>::new(buf);
         let res = reader.val();
         (res, reader.into_rest().leak())
     }

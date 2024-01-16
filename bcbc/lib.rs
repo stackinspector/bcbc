@@ -1,5 +1,4 @@
 #![no_std]
-#![deny(unsafe_code)]
 
 extern crate alloc;
 use alloc::boxed::Box;

@@ -4,18 +4,19 @@ use super::*;
 
 // TODO should we make no-panic guarantees like reader::Input ?
 
-trait Output {
+pub unsafe trait Output: Default {
     type Storage;
     fn byte(&mut self, n: u8);
     fn bytes<B: AsRef<[u8]>>(&mut self, bytes: B);
     fn leak(self) -> Self::Storage;
 }
 
+#[derive(Default)]
 struct VecOutput {
     bytes: Vec<u8>,
 }
 
-impl Output for VecOutput {
+unsafe impl Output for VecOutput {
     type Storage = Vec<u8>;
 
     #[inline]
@@ -39,13 +40,6 @@ struct Writer<O> {
     output: O,
 }
 
-impl Writer<VecOutput> {
-    fn new() -> Writer<VecOutput> {
-        Writer { output: VecOutput { bytes: Vec::new() } }
-    }
-
-}
-
 macro_rules! num_impl {
     ($($num:tt)*) => {$(
         fn $num(&mut self, n: $num) {
@@ -55,6 +49,10 @@ macro_rules! num_impl {
 }
 
 impl<O: Output> Writer<O> {
+    fn new() -> Writer<O> {
+        Writer { output: Default::default() }
+    }
+
     fn into_inner(self) -> O::Storage {
         self.output.leak()
     }
@@ -330,9 +328,9 @@ impl<O: Output> Writer<O> {
     }
 }
 
-impl<B: AsRef<[u8]>> Value<B> {
-    pub fn encode(&self) -> Vec<u8> {
-        let mut writer = Writer::new();
+impl<B: AsRef<[u8]>, O: Output> Value<B> {
+    pub fn encode(&self) -> O::Storage {
+        let mut writer = Writer::<O>::new();
         writer.val(self);
         writer.into_inner()
     }
