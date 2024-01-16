@@ -14,7 +14,7 @@ pub unsafe trait Input: Sized + From<Self::Storage> {
     fn leak_as_array<const N: usize>(self) -> [u8; N];
 }
 
-struct SliceInput<'a> {
+pub struct SliceInput<'a> {
     bytes: &'a [u8],
 }
 
@@ -55,7 +55,7 @@ unsafe impl<'a> Input for SliceInput<'a> {
 }
 
 #[cfg(feature = "bytes")]
-struct BytesInput {
+pub struct BytesInput {
     bytes: Bytes,
 }
 
@@ -109,8 +109,8 @@ struct Reader<I> {
 }
 
 impl<I: Input> Reader<I> {
-    fn new(bytes: I::Storage) -> Self {
-        Reader { input: bytes.into(), pos: 0 }
+    fn new(input: I) -> Self {
+        Reader { input, pos: 0 }
     }
 
     #[inline(always)]
@@ -521,16 +521,16 @@ impl<I: Input> Reader<I> {
     }
 }
 
-impl<I: Input> Value<I::Storage> {
-    pub fn decode(buf: I::Storage) -> Result<Value<I::Storage>> {
-        let mut reader = Reader::<I>::new(buf);
+impl<S> Value<S> {
+    pub fn decode<I: Input<Storage = S>>(input: I) -> Result<Value<I::Storage>> {
+        let mut reader = Reader::<I>::new(input);
         let val = reader.val()?;
         reader.finish()?;
         Ok(val)
     }
 
-    pub fn decode_first_value(buf: I::Storage) -> (Result<Value<I::Storage>>, I::Storage) {
-        let mut reader = Reader::<I>::new(buf);
+    pub fn decode_first_value<I: Input<Storage = S>>(input: I) -> (Result<Value<I::Storage>>, I::Storage) {
+        let mut reader = Reader::<I>::new(input);
         let res = reader.val();
         (res, reader.into_rest().leak())
     }

@@ -1,5 +1,7 @@
 use hex_literal::hex;
 use crate::*;
+use reader::SliceInput;
+use writer::{Output, VecOutput};
 
 type Value<'a> = crate::Value<&'a [u8]>;
 
@@ -23,13 +25,13 @@ fn cases() {
     macro_rules! case {
         ($v:expr, $exp:expr) => {{
             println!("{:?}", &$v);
-            let buf = $v.encode();
+            let buf = $v.encode::<VecOutput>().leak();
             println!("len={}", $exp.len());
             println!("{}", hex::encode(&$exp));
             println!("len={}", buf.len());
             println!("{}", hex::encode(&buf));
             assert_eq!(&buf, &$exp);
-            let v2 = Value::decode(&buf).unwrap();
+            let v2 = Value::decode(SliceInput::from(buf.as_ref())).unwrap();
             assert_eq!($v, v2);
         }};
     }
@@ -97,7 +99,7 @@ fn cases() {
 fn err_cases() {
     macro_rules! err_case {
         ($exp:expr, $err:expr) => {{
-            let err = Value::decode(&$exp).unwrap_err();
+            let err = Value::decode(SliceInput::from($exp.as_ref())).unwrap_err();
             assert_eq!(err, $err);
         }};
     }

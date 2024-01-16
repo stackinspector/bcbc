@@ -12,7 +12,7 @@ pub unsafe trait Output: Default {
 }
 
 #[derive(Default)]
-struct VecOutput {
+pub struct VecOutput {
     bytes: Vec<u8>,
 }
 
@@ -53,8 +53,8 @@ impl<O: Output> Writer<O> {
         Writer { output: Default::default() }
     }
 
-    fn into_inner(self) -> O::Storage {
-        self.output.leak()
+    fn into_inner(self) -> O {
+        self.output
     }
 
     #[inline(always)]
@@ -328,8 +328,8 @@ impl<O: Output> Writer<O> {
     }
 }
 
-impl<B: AsRef<[u8]>, O: Output> Value<B> {
-    pub fn encode(&self) -> O::Storage {
+impl<B: AsRef<[u8]>> Value<B> {
+    pub fn encode<O: Output>(&self) -> O {
         let mut writer = Writer::<O>::new();
         writer.val(self);
         writer.into_inner()
