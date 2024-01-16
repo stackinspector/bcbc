@@ -2,7 +2,49 @@ use alloc::vec::Vec;
 use foundations::byterepr::*;
 use super::*;
 
+// TODO should we make no-panic guarantees like reader::Input ?
+
+trait Output {
+    type Storage;
+    fn byte(&mut self, n: u8);
+    fn bytes<B: AsRef<[u8]>>(&mut self, bytes: B);
+    fn leak(self) -> Self::Storage;
+}
+
+struct VecOutput {
+    bytes: Vec<u8>,
+}
+
+impl Output for VecOutput {
+    type Storage = Vec<u8>;
+
+    #[inline]
+    fn byte(&mut self, n: u8) {
+        self.bytes.push(n);
+    }
+    
+    #[inline]
+    fn bytes<B: AsRef<[u8]>>(&mut self, bytes: B) {
+        self.bytes.extend_from_slice(bytes.as_ref());
+    }
+
+    fn leak(self) -> Self::Storage {
+        self.bytes
+    }
+}
+
 // TODO writer error?
+
+struct Writer<O> {
+    output: O,
+}
+
+impl Writer<VecOutput> {
+    fn new() -> Writer<VecOutput> {
+        Writer { output: VecOutput { bytes: Vec::new() } }
+    }
+
+}
 
 macro_rules! num_impl {
     ($($num:tt)*) => {$(
@@ -12,28 +54,19 @@ macro_rules! num_impl {
     )*};
 }
 
-struct Writer {
-    bytes: Vec<u8>,
-}
-
-impl Writer {
-    fn new() -> Writer {
-        Writer { bytes: Vec::new() }
+impl<O: Output> Writer<O> {
+    fn into_inner(self) -> O::Storage {
+        self.output.leak()
     }
 
-    fn into_bytes(self) -> Vec<u8> {
-        let Writer { bytes } = self;
-        bytes
-    }
-
-    #[inline]
+    #[inline(always)]
     fn bytes<B2: AsRef<[u8]>>(&mut self, bytes: B2) {
-        self.bytes.extend_from_slice(bytes.as_ref());
+        self.output.bytes(bytes);
     }
 
-    #[inline]
+    #[inline(always)]
     fn u8(&mut self, n: u8) {
-        self.bytes.push(n);
+        self.output.byte(n);
     }
 
     num_impl! {
@@ -301,6 +334,6 @@ impl<B: AsRef<[u8]>> Value<B> {
     pub fn encode(&self) -> Vec<u8> {
         let mut writer = Writer::new();
         writer.val(self);
-        writer.into_bytes()
+        writer.into_inner()
     }
 }
