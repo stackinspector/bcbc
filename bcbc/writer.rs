@@ -53,8 +53,8 @@ impl<O: Output> Writer<O> {
         Writer { output: Default::default() }
     }
 
-    fn into_inner(self) -> O {
-        self.output
+    fn into_inner(self) -> O::Storage {
+        self.output.leak()
     }
 
     #[inline(always)]
@@ -329,7 +329,7 @@ impl<O: Output> Writer<O> {
 }
 
 impl<B: AsRef<[u8]>> Value<B> {
-    pub fn encode<O: Output>(&self) -> O {
+    pub fn encode<O: Output>(&self) -> O::Storage {
         let mut writer = Writer::<O>::new();
         writer.val(self);
         writer.into_inner()

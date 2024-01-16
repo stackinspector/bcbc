@@ -109,8 +109,8 @@ struct Reader<I> {
 }
 
 impl<I: Input> Reader<I> {
-    fn new(input: I) -> Self {
-        Reader { input, pos: 0 }
+    fn new(bytes: I::Storage) -> Self {
+        Reader { input: bytes.into(), pos: 0 }
     }
 
     #[inline(always)]
@@ -521,16 +521,16 @@ impl<I: Input> Reader<I> {
     }
 }
 
-impl<S> Value<S> {
-    pub fn decode<I: Input<Storage = S>>(input: I) -> Result<Value<I::Storage>> {
-        let mut reader = Reader::<I>::new(input);
+impl<B> Value<B> {
+    pub fn decode<I: Input<Storage = B>>(buf: B) -> Result<Value<B>> {
+        let mut reader = Reader::<I>::new(buf);
         let val = reader.val()?;
         reader.finish()?;
         Ok(val)
     }
 
-    pub fn decode_first_value<I: Input<Storage = S>>(input: I) -> (Result<Value<I::Storage>>, I::Storage) {
-        let mut reader = Reader::<I>::new(input);
+    pub fn decode_first_value<I: Input<Storage = B>>(buf: B) -> (Result<Value<B>>, B) {
+        let mut reader = Reader::<I>::new(buf);
         let res = reader.val();
         (res, reader.into_rest().leak())
     }
