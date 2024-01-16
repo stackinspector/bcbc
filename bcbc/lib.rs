@@ -3,6 +3,9 @@
 extern crate alloc;
 use alloc::boxed::Box;
 
+#[cfg(feature = "bytes")]
+use bytes::Bytes;
+
 use foundations::{error_enum, num_enum};
 
 pub type EnumVariantId = u64;

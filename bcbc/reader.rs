@@ -1,5 +1,3 @@
-#[cfg(feature = "bytes")]
-use bytes::Bytes;
 use foundations::byterepr::*;
 use super::*;
 
