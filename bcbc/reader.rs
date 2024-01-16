@@ -108,8 +108,8 @@ struct Reader<I> {
     pos: usize,
 }
 
-impl<I: Input> Reader<I> {
-    fn new(bytes: I::Storage) -> Self {
+impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
+    fn new(bytes: B) -> Self {
         Reader { input: bytes.into(), pos: 0 }
     }
 
@@ -154,7 +154,7 @@ impl<I: Input> Reader<I> {
 }
 
 // primitive derivatives
-impl<I: Input> Reader<I> {
+impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
     // copies
     #[inline]
     fn split_out_array<const N: usize>(&mut self) -> Result<[u8; N]> {
@@ -174,12 +174,12 @@ impl<I: Input> Reader<I> {
     }
 
     #[inline]
-    fn bytes(&mut self, sz: usize) -> Result<I::Storage> {
+    fn bytes(&mut self, sz: usize) -> Result<B> {
         Ok(self.split_out(sz)?.leak())
     }
 
     #[inline]
-    fn string(&mut self, sz: usize) -> Result<I::Storage> {
+    fn string(&mut self, sz: usize) -> Result<B> {
         let bytes = self.bytes(sz)?;
         let _ = core::str::from_utf8(bytes.as_ref())?;
         Ok(bytes)
@@ -209,7 +209,7 @@ macro_rules! num_impl {
     )*};
 }
 
-impl<I: Input> Reader<I> {
+impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
     #[inline(always)]
     fn u8(&mut self) -> Result<u8> {
         self.read_byte()
@@ -340,11 +340,11 @@ impl<I: Input> Reader<I> {
         }
     }
 
-    fn val_seq(&mut self, size: usize) -> Result<Box<[Value<I::Storage>]>> {
+    fn val_seq(&mut self, size: usize) -> Result<Box<[Value<B>]>> {
         alloc_seq(size, |_| self.val())
     }
 
-    fn val_seq_map(&mut self, size: usize) -> Result<Box<[(Value<I::Storage>, Value<I::Storage>)]>> {
+    fn val_seq_map(&mut self, size: usize) -> Result<Box<[(Value<B>, Value<B>)]>> {
         alloc_seq(size, |_| {
             let k = self.val()?;
             let v = self.val()?;
@@ -352,7 +352,7 @@ impl<I: Input> Reader<I> {
         })
     }
 
-    fn val(&mut self) -> Result<Value<I::Storage>> {
+    fn val(&mut self) -> Result<Value<B>> {
         let (h4, l4) = casting::to_h4l4(self.u8()?)?;
         Ok(match h4 {
             H4::String => {
@@ -521,7 +521,7 @@ impl<I: Input> Reader<I> {
     }
 }
 
-impl<B> Value<B> {
+impl<B: AsRef<[u8]>> Value<B> {
     pub fn decode<I: Input<Storage = B>>(buf: B) -> Result<Value<B>> {
         let mut reader = Reader::<I>::new(buf);
         let val = reader.val()?;
