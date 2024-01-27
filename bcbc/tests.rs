@@ -3,8 +3,6 @@ use crate::*;
 use reader::SliceInput;
 use writer::VecOutput;
 
-type Value<'a> = crate::Value<&'a [u8]>;
-
 #[inline(always)]
 fn b<'a, B: ?Sized + AsRef<[u8]>>(bytes: &'a B) -> &'a [u8] {
     bytes.as_ref()
@@ -20,19 +18,44 @@ macro_rules! println {
     ($($tt:tt)*) => {};
 }
 
+#[cfg(feature = "bytes")]
+use {
+    alloc::vec::Vec,
+    bytes::Bytes,
+    reader::BytesInput,
+};
+
+#[cfg(feature = "bytes")]
+fn slice2vec(b: &[u8]) -> Vec<u8> {
+    b.into()
+}
+
+#[cfg(feature = "bytes")]
+fn bytes2vec(b: Bytes) -> Vec<u8> {
+    b.into()
+}
+
 #[test]
 fn cases() {
     macro_rules! case {
         ($v:expr, $exp:expr) => {{
-            println!("{:?}", &$v);
-            let buf = $v.encode::<VecOutput>();
-            println!("len={}", $exp.len());
-            println!("{}", hex::encode(&$exp));
+            let v = $v;
+            let exp = $exp;
+            println!("{:?}", &v);
+            let buf = v.encode::<VecOutput>();
+            println!("len={}", exp.len());
+            println!("{}", hex::encode(&exp));
             println!("len={}", buf.len());
             println!("{}", hex::encode(&buf));
-            assert_eq!(&buf, &$exp);
+            assert_eq!(&buf, &exp);
             let v2 = Value::decode::<SliceInput>(&buf).unwrap();
-            assert_eq!($v, v2);
+            assert_eq!(v, v2);
+            #[cfg(feature = "bytes")]
+            {
+                let buf = Bytes::from(buf);
+                let v3 = Value::decode::<BytesInput>(buf).unwrap();
+                assert_eq!(v.map_bytes(slice2vec), v3.map_bytes(bytes2vec));
+            }
         }};
     }
 

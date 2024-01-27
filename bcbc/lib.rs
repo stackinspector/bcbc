@@ -135,6 +135,7 @@ pub enum Type {
     TypeId,
 }
 
+// TODO impl<B1: PartialEq<B2>, B2> PartialEq<Value<B2>> for Value<B1>
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Value<B> {
     Unit,

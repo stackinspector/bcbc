@@ -331,3 +331,50 @@ impl<B> Value<B> {
         into_struct -> Box<[Value<B>]>         | Struct(_id, s) -> { s }
     }
 }
+
+impl<B> Value<B> {
+    // can only be function pointers
+    pub fn map_bytes<B2>(self, f: fn(B) -> B2) -> Value<B2> {
+        match self {
+            Value::Unit => Value::Unit,
+            Value::Bool(_0) => Value::Bool(_0),
+            Value::U8(_0) => Value::U8(_0),
+            Value::U16(_0) => Value::U16(_0),
+            Value::U32(_0) => Value::U32(_0),
+            Value::U64(_0) => Value::U64(_0),
+            Value::I8(_0) => Value::I8(_0),
+            Value::I16(_0) => Value::I16(_0),
+            Value::I32(_0) => Value::I32(_0),
+            Value::I64(_0) => Value::I64(_0),
+            Value::F16(_0) => Value::F16(_0),
+            Value::F32(_0) => Value::F32(_0),
+            Value::F64(_0) => Value::F64(_0),
+            Value::String(_0) => Value::String(f(_0)),
+            Value::Bytes(_0) => Value::Bytes(f(_0)),
+            Value::Option(_0, _1) => Value::Option(_0, Box::new(_1.map(|v| v.map_bytes(f)))),
+            Value::List(_0, _1) => Value::List(
+                _0,
+                _1.into_vec().into_iter().map(|v| v.map_bytes(f)).collect(),
+            ),
+            Value::Map(_0, _1) => Value::Map(
+                _0,
+                _1.into_vec()
+                    .into_iter()
+                    .map(|(k, v)| (k.map_bytes(f), v.map_bytes(f)))
+                    .collect(),
+            ),
+            Value::Tuple(_0) => {
+                Value::Tuple(_0.into_vec().into_iter().map(|v| v.map_bytes(f)).collect())
+            }
+            Value::Alias(_0, _1) => Value::Alias(_0, Box::new(_1.map_bytes(f))),
+            Value::CEnum(_0, _1) => Value::CEnum(_0, _1),
+            Value::Enum(_0, _1, _2) => Value::Enum(_0, _1, Box::new(_2.map_bytes(f))),
+            Value::Struct(_0, _1) => Value::Struct(
+                _0,
+                _1.into_vec().into_iter().map(|v| v.map_bytes(f)).collect(),
+            ),
+            Value::Type(_0) => Value::Type(_0),
+            Value::TypeId(_0) => Value::TypeId(_0),
+        }
+    }
+}
