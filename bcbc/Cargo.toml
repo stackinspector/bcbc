@@ -10,7 +10,7 @@ repository = "https://github.com/Berylsoft/bcbc"
 path = "lib.rs"
 
 [dependencies]
-bytes = { version = "1", default-features = false, optional = true } 
+byte-storage = { path = "../byte-storage" }
 foundations = { git = "https://github.com/Berylsoft/foundations", features = [
     "byterepr",
 
@@ -24,4 +24,4 @@ hex = "*"
 hex-literal = "*"
 
 [features]
-bytes = ["dep:bytes"]
+bytes = ["byte-storage/bytes"]

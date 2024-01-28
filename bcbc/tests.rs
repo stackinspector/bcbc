@@ -1,9 +1,5 @@
 use hex_literal::hex;
 use crate::*;
-use reader::SliceInput;
-#[cfg(feature = "bytes")]
-use reader::BytesInput;
-use writer::VecOutput;
 
 macro_rules! expb {
     ($s:literal) => {

@@ -1,0 +1,16 @@
+[package]
+name = "byte-storage"
+version = "0.1.0"
+edition = "2021"
+authors = ["stackinspector"]
+license = "MPL-2.0"
+repository = "https://github.com/Berylsoft/bcbc"
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+bytes = { version = "1", default-features = false, optional = true }
+
+[features]
+bytes = ["dep:bytes"]
