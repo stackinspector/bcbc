@@ -3,7 +3,7 @@ use foundations::byterepr::*;
 pub const SCHEMA_ANONYMOUS: u8 = 0x00;
 pub const SCHEMA_HASH: u8 = 0xff;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TypeId {
     Anonymous,
     Std(StdId),
@@ -20,7 +20,7 @@ impl TypeId {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StdId {
     pub(crate) schema: u8,
     pub(crate) id: u16,
@@ -43,7 +43,7 @@ impl StdId {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HashId {
     pub(crate) hash: [u8; 7],
 }

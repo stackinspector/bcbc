@@ -100,7 +100,7 @@ num_enum! {
     } as u8 else Fatal::Ext1
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Type {
     Unknown,
 
@@ -135,8 +135,11 @@ pub enum Type {
     TypeId,
 }
 
-// TODO impl<B1: PartialEq<B2>, B2> PartialEq<Value<B2>> for Value<B1>
-#[derive(Clone, Debug, PartialEq, Eq)]
+mod bytestr;
+pub use bytestr::ByteStr;
+
+// TODO impl<B1: PartialEq<B2>, B2> PartialEq&PartialOrd<Value<B2>> for Value<B1>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Value<B> {
     Unit,
     Bool(bool),
@@ -153,8 +156,7 @@ pub enum Value<B> {
     F32(u32),
     F64(u64),
 
-    // TODO string wrapper
-    String(B),
+    String(ByteStr<B>),
     Bytes(B),
 
     Option(Type, Box<Option<Value<B>>>),

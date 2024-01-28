@@ -8,6 +8,11 @@ fn b<'a, B: ?Sized + AsRef<[u8]>>(bytes: &'a B) -> &'a [u8] {
     bytes.as_ref()
 }
 
+#[inline(always)]
+fn s(bytes: &'static str) -> ByteStr<&'static [u8]> {
+    bytes.into()
+}
+
 macro_rules! seq {
     ($($x:expr),+ $(,)?) => {
         Box::new([$($x),+])
@@ -21,7 +26,6 @@ macro_rules! println {
 #[cfg(feature = "bytes")]
 use {
     alloc::vec::Vec,
-    bytes::Bytes,
     reader::BytesInput,
 };
 
@@ -62,12 +66,12 @@ fn cases() {
     case!(
         Value::Map((Type::U64, Type::List(Box::new(Type::String))), seq![
             (Value::U64(123), Value::List(Type::String, seq![
-                Value::String(b("hello")),
-                Value::String(b("goodbye")),
+                Value::String(s("hello")),
+                Value::String(s("goodbye")),
             ])),
             (Value::U64(999999), Value::List(Type::String, seq![
-                Value::String(b("thanks")),
-                Value::String(b("how are you")),
+                Value::String(s("thanks")),
+                Value::String(s("how are you")),
             ])),
         ]),
         hex!("
@@ -84,7 +88,7 @@ fn cases() {
             Value::I64(-7777777),
             Value::U64(24393),
             Value::F64(50.0_f64.to_bits()),
-            Value::String(b("Berylsoft")),
+            Value::String(s("Berylsoft")),
             Value::Bytes(b(b"(\x00)")),
             Value::Option(Type::String, Box::new(None)),
             Value::Option(Type::Bool, Box::new(Some(Value::Bool(true)))),

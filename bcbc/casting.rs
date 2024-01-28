@@ -314,7 +314,7 @@ impl<B> Value<B> {
         into_f16 -> u16        | F16
         into_f32 -> u32        | F32
         into_f64 -> u64        | F64
-        into_string -> B       | String
+        into_string -> ByteStr<B> | String
         into_bytes -> B        | Bytes
         into_type -> Type      | Type
         into_type_id -> TypeId | TypeId
@@ -349,7 +349,7 @@ impl<B> Value<B> {
             Value::F16(_0) => Value::F16(_0),
             Value::F32(_0) => Value::F32(_0),
             Value::F64(_0) => Value::F64(_0),
-            Value::String(_0) => Value::String(f(_0)),
+            Value::String(_0) => Value::String(_0.map_bytes(f)),
             Value::Bytes(_0) => Value::Bytes(f(_0)),
             Value::Option(_0, _1) => Value::Option(_0, Box::new(_1.map(|v| v.map_bytes(f)))),
             Value::List(_0, _1) => Value::List(

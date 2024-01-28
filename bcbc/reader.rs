@@ -176,13 +176,6 @@ impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
         Ok(self.split_out(sz)?.leak())
     }
 
-    #[inline]
-    fn string(&mut self, sz: usize) -> Result<B> {
-        let bytes = self.bytes(sz)?;
-        let _ = core::str::from_utf8(bytes.as_ref())?;
-        Ok(bytes)
-    }
-
     // copies
     #[inline]
     fn bytes_sized<const N: usize>(&mut self) -> Result<[u8; N]> {
@@ -355,8 +348,8 @@ impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
         Ok(match h4 {
             H4::String => {
                 let len = self.extszvar(l4)?;
-                let b = self.string(len)?;
-                Value::String(b)
+                let b = self.bytes(len)?;
+                Value::String(ByteStr::from_utf8(b)?)
             },
             H4::Bytes => {
                 let len = self.extszvar(l4)?;
