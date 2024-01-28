@@ -1,7 +1,10 @@
 // TODO impl a more general one outside
-// TODO may necessary to impl sth like string::StableAsRef
 
 use alloc::{string::String, vec::Vec};
+
+// TODO may necessary to impl sth like string::StableAsRef
+// pub unsafe trait ByteStrStorage: AsRef<[u8]> {}
+// should structs impl Input impl this?
 
 #[cfg(feature = "bytes")]
 use crate::Bytes;
@@ -38,6 +41,19 @@ impl From<&'static str> for ByteStr<Bytes> {
         }
     }
 }
+
+// conflict with above
+/*
+#[cfg(feature = "bytes")]
+impl<'a> From<&'a str> for ByteStr<Bytes> {
+    /* const */ fn from(value: &'static str) -> Self {
+        ByteStr {
+            // Invariant: value is a str so contains valid UTF-8.
+            bytes: Bytes::copy_from_slice(value.as_bytes()),
+        }
+    }
+}
+*/
 
 impl<B: AsRef<[u8]>> ByteStr<B> {
     #[inline]

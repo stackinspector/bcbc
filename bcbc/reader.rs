@@ -4,7 +4,7 @@ use super::*;
 // region: primitives that should provide the same no-panic guarantees as the crate `untrusted`
 
 /// # Safety
-/// struct types impls this should provide the same no-panic guarantees as the crate `untrusted`
+/// struct types impl this should provide the same no-panic guarantees as the crate `untrusted`
 pub unsafe trait Input: Sized + From<Self::Storage> {
     type Storage: AsRef<[u8]>;
     fn byte(&self, pos: usize) -> Option<&u8>;
