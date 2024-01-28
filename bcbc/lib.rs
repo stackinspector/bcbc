@@ -1,9 +1,11 @@
 #![no_std]
+#![forbid(unsafe_code)]
 
 extern crate alloc;
 use alloc::boxed::Box;
 
 use foundations::{error_enum, num_enum};
+pub use byte_storage;
 use byte_storage::*;
 
 pub type EnumVariantId = u64;
@@ -186,12 +188,8 @@ pub const SIZE_MAX: usize = u16::MAX as usize;
 error_enum! {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub enum Error {
-        TooShort { rest: usize, expected: usize },
-        TooLong { rest: usize },
         // TODO temp solution
         TooLongLen(usize),
-        // TODO temp solution
-        TooLongReadLen(usize),
         Tag(u8),
         BytevarIntSign { buf: [u8; 8] },
         BytevarLongerThanType { len: usize, nlen: usize, buf: [u8; 8] },
@@ -202,6 +200,7 @@ error_enum! {
     } convert {
         // Utf8 => { pos: usize, len: usize, error: core::str::Utf8Error },
         Utf8 => core::str::Utf8Error,
+        Read => ReadError,
         Fatal => Fatal,
     }
 }

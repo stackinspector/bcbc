@@ -65,6 +65,7 @@ impl<B: AsRef<[u8]> + ByteStorage> ByteStr<B> {
     /// ## Safety
     /// `bytes` must contain valid UTF-8. In a release build it is undefined
     /// behaviour to call this with `bytes` that is not valid UTF-8.
+    // if ByteStr should make untrusted-like guarantees, this should not exist
     pub unsafe fn from_utf8_unchecked(bytes: B) -> ByteStr<B> {
         if cfg!(debug_assertions) {
             match core::str::from_utf8(bytes.as_ref()) {

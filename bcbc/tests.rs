@@ -42,6 +42,7 @@ fn cases() {
         assert_eq!(v, v2);
         #[cfg(feature = "bytes")]
         {
+            // TODO after byte-storage separated this is actually testing byte-storage. should we move this?
             // TODO is `Bytes -> &[u8]` possible?
             // fn bytes2slice<'a>(v: Value<Bytes>) -> Value<&'a [u8]> {
             //     // typeof AsRef::as_ref : for<'a> fn(&'a Bytes) -> &'a [u8]
@@ -126,12 +127,12 @@ fn cases() {
 
     err_case(
         expb!("0e 000000"),
-        Error::TooLong { rest: 3 }
+        Error::Read(ReadError::TooLong { rest: 3 })
     );
 
     err_case(
         expb!("89 426572796c736f66"),
-        Error::TooShort { rest: 8, expected: 9 }
+        Error::Read(ReadError::TooShort { rest: 8, expected: 9 })
     );
 
     err_case(

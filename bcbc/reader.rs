@@ -1,90 +1,6 @@
 use foundations::byterepr::*;
 use super::*;
 
-// region: primitives that should provide the same no-panic guarantees as the crate `untrusted`
-
-struct Reader<I> {
-    input: I,
-    pos: usize,
-}
-
-impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
-    fn new(bytes: B) -> Self {
-        Reader { input: bytes.into(), pos: 0 }
-    }
-
-    #[inline(always)]
-    /* const */ fn rest_len(&self) -> usize {
-        self.input.len() - self.pos
-    }
-
-    fn split_out(&mut self, size: usize) -> Result<I> {
-        let new_pos = self.pos.checked_add(size)
-            .ok_or(Error::TooLongReadLen(size))?;
-        let ret = self.input.bytes(self.pos..new_pos)
-            .ok_or(Error::TooShort { rest: self.rest_len(), expected: size })?;
-        self.pos = new_pos;
-        Ok(ret)
-    }
-
-    // copies
-    fn read_byte(&mut self) -> Result<u8> {
-        match self.input.byte(self.pos) {
-            Some(b) => {
-                // safe from overflow; see https://docs.rs/untrusted/0.9.0/src/untrusted/input.rs.html#39-43
-                self.pos += 1;
-                Ok(*b)
-            },
-            None => Err(Error::TooShort { rest: 0, expected: 1 })
-        }
-    }
-
-    fn finish(self) -> Result<()> {
-        let rest = self.rest_len();
-        if rest == 0 {
-            Ok(())
-        } else {
-            Err(Error::TooLong { rest })
-        }
-    }
-
-    fn into_rest(mut self) -> I {
-        self.split_out(self.rest_len()).unwrap()
-    }
-}
-
-// primitive derivatives
-impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
-    // copies
-    #[inline]
-    fn split_out_array<const N: usize>(&mut self) -> Result<[u8; N]> {
-        Ok(self.split_out(N)?.leak_as_array())
-    }
-
-    // copies
-    fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
-        let src = self.split_out(buf.len())?;
-        if buf.len() == 1 {
-            // checked below
-            buf[0] = *src.byte(0).unwrap();
-        } else {
-            buf.copy_from_slice(src.leak().as_ref());
-        }
-        Ok(())
-    }
-
-    #[inline]
-    fn bytes(&mut self, sz: usize) -> Result<B> {
-        Ok(self.split_out(sz)?.leak())
-    }
-
-    // copies
-    #[inline]
-    fn bytes_sized<const N: usize>(&mut self) -> Result<[u8; N]> {
-        self.split_out_array()
-    }
-}
-
 // We can't avoid allocs completely because of nested values and indefinite-length sequences.
 // So we should check for allocation at sequence creates to ensure no panic.
 #[inline(always)]
@@ -92,7 +8,47 @@ fn alloc_seq<T, F: FnMut(()) -> Result<T>>(size: usize, f: F) -> Result<Box<[T]>
     core::iter::repeat(()).take(size).map(f).collect()
 }
 
-// endregion
+struct Reader<I> {
+    inner: byte_storage::Reader<I>,
+}
+
+// wrapper impls
+impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
+    #[inline(always)]
+    pub fn new(bytes: B) -> Self {
+        Self { inner: byte_storage::Reader::new(bytes) }
+    }
+
+    #[inline(always)]
+    pub fn read_byte(&mut self) -> Result<u8> {
+        Ok(self.inner.read_byte()?)
+    }
+
+    #[inline(always)]
+    pub fn finish(self) -> Result<()> {
+        Ok(self.inner.finish()?)
+    }
+
+    #[inline(always)]
+    pub fn into_rest(self) -> I {
+        self.inner.into_rest()
+    }
+
+    #[inline(always)]
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+        Ok(self.inner.read_exact(buf)?)
+    }
+
+    #[inline(always)]
+    pub fn bytes(&mut self, sz: usize) -> Result<B> {
+        Ok(self.inner.bytes(sz)?)
+    }
+
+    #[inline(always)]
+    pub fn bytes_sized<const N: usize>(&mut self) -> Result<[u8; N]> {
+        Ok(self.inner.bytes_sized()?)
+    }
+}
 
 macro_rules! num_impl {
     ($($num:tt)*) => {$(

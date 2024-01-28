@@ -1,5 +1,7 @@
 use super::*;
 
+// primitives in this mod should provide the same no-panic guarantees as the crate `untrusted`
+
 /// # Safety
 /// types impl this should provide the same no-panic guarantees as the crate `untrusted`
 pub unsafe trait Input: Sized + From<Self::Storage> + ByteStorage {
@@ -100,5 +102,97 @@ unsafe impl Input for BytesInput {
     #[inline]
     fn leak_as_array<const N: usize>(self) -> [u8; N] {
         self.bytes.as_ref().try_into().unwrap(/* ? */)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ReadError {
+    TooShort { rest: usize, expected: usize },
+    TooLong { rest: usize },
+    // TODO temp solution
+    TooLongReadLen(usize),
+}
+
+type Result<T> = core::result::Result<T, ReadError>;
+
+pub struct Reader<I> {
+    input: I,
+    pos: usize,
+}
+
+impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
+    pub fn new(bytes: B) -> Self {
+        Reader { input: bytes.into(), pos: 0 }
+    }
+
+    #[inline(always)]
+    pub /* const */ fn rest_len(&self) -> usize {
+        self.input.len() - self.pos
+    }
+
+    pub fn split_out(&mut self, size: usize) -> Result<I> {
+        let new_pos = self.pos.checked_add(size)
+            .ok_or(ReadError::TooLongReadLen(size))?;
+        let ret = self.input.bytes(self.pos..new_pos)
+            .ok_or(ReadError::TooShort { rest: self.rest_len(), expected: size })?;
+        self.pos = new_pos;
+        Ok(ret)
+    }
+
+    // copies
+    pub fn read_byte(&mut self) -> Result<u8> {
+        match self.input.byte(self.pos) {
+            Some(b) => {
+                // safe from overflow; see https://docs.rs/untrusted/0.9.0/src/untrusted/input.rs.html#39-43
+                self.pos += 1;
+                Ok(*b)
+            },
+            None => Err(ReadError::TooShort { rest: 0, expected: 1 })
+        }
+    }
+
+    pub fn finish(self) -> Result<()> {
+        let rest = self.rest_len();
+        if rest == 0 {
+            Ok(())
+        } else {
+            Err(ReadError::TooLong { rest })
+        }
+    }
+
+    pub fn into_rest(mut self) -> I {
+        self.split_out(self.rest_len()).unwrap()
+    }
+}
+
+// primitive derivatives
+impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
+    // copies
+    #[inline]
+    pub fn split_out_array<const N: usize>(&mut self) -> Result<[u8; N]> {
+        Ok(self.split_out(N)?.leak_as_array())
+    }
+
+    // copies
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
+        let src = self.split_out(buf.len())?;
+        if buf.len() == 1 {
+            // checked below
+            buf[0] = *src.byte(0).unwrap();
+        } else {
+            buf.copy_from_slice(src.leak().as_ref());
+        }
+        Ok(())
+    }
+
+    #[inline]
+    pub fn bytes(&mut self, sz: usize) -> Result<B> {
+        Ok(self.split_out(sz)?.leak())
+    }
+
+    // copies
+    #[inline]
+    pub fn bytes_sized<const N: usize>(&mut self) -> Result<[u8; N]> {
+        self.split_out_array()
     }
 }
