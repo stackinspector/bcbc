@@ -22,7 +22,7 @@ impl<'a> From<&'a str> for ByteStr<&'a [u8]> {
     }
 }
 
-impl<'a> From<String> for ByteStr<Vec<u8>> {
+impl From<String> for ByteStr<Vec<u8>> {
     fn from(value: String) -> Self {
         // Invariant: value is a String so contains valid UTF-8.
         ByteStr { bytes: value.into_bytes() }
@@ -30,7 +30,7 @@ impl<'a> From<String> for ByteStr<Vec<u8>> {
 }
 
 #[cfg(feature = "bytes")]
-impl<'a> From<&'static str> for ByteStr<Bytes> {
+impl From<&'static str> for ByteStr<Bytes> {
     /* const */ fn from(value: &'static str) -> Self {
         ByteStr {
             // Invariant: value is a str so contains valid UTF-8.

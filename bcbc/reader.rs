@@ -3,11 +3,16 @@ use super::*;
 
 // region: primitives that should provide the same no-panic guarantees as the crate `untrusted`
 
+/// # Safety
+/// struct types impls this should provide the same no-panic guarantees as the crate `untrusted`
 pub unsafe trait Input: Sized + From<Self::Storage> {
     type Storage: AsRef<[u8]>;
     fn byte(&self, pos: usize) -> Option<&u8>;
     fn bytes(&self, range: core::ops::Range<usize>) -> Option<Self>;
     /* const */ fn len(&self) -> usize;
+    /* const */ fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     fn leak(self) -> Self::Storage;
     fn leak_as_array<const N: usize>(self) -> [u8; N];
 }
@@ -179,7 +184,7 @@ impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
     // copies
     #[inline]
     fn bytes_sized<const N: usize>(&mut self) -> Result<[u8; N]> {
-        Ok(self.split_out_array()?)
+        self.split_out_array()
     }
 }
 
@@ -335,6 +340,7 @@ impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
         alloc_seq(size, |_| self.val())
     }
 
+    #[allow(clippy::type_complexity)]
     fn val_seq_map(&mut self, size: usize) -> Result<Box<[(Value<B>, Value<B>)]>> {
         alloc_seq(size, |_| {
             let k = self.val()?;

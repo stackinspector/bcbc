@@ -268,9 +268,7 @@ macro_rules! into_impl {
     // TODO auto make fn name with concat_ident! and const case convert
     ($($fn_name:ident | $variant:ident)*) => {$(
         pub fn $fn_name(self) {
-            if let Value::$variant = self {
-                ()
-            } else {
+            if !matches!(self, Value::$variant) {
                 unreachable!()
             }
         }
@@ -332,6 +330,7 @@ impl<B> Value<B> {
     }
 }
 
+#[allow(clippy::just_underscores_and_digits)]
 impl<B> Value<B> {
     // can only be function pointers
     pub fn map_bytes<B2>(self, f: fn(B) -> B2) -> Value<B2> {

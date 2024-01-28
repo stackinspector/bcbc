@@ -3,8 +3,9 @@ use foundations::byterepr::*;
 use super::*;
 
 // TODO should we make no-panic guarantees like reader::Input ?
+// before this, Output does not need to be unsafe
 
-pub unsafe trait Output: Default {
+pub trait Output: Default {
     type Storage;
     fn byte(&mut self, n: u8);
     fn bytes<B: AsRef<[u8]>>(&mut self, bytes: B);
@@ -16,7 +17,7 @@ pub struct VecOutput {
     bytes: Vec<u8>,
 }
 
-unsafe impl Output for VecOutput {
+impl Output for VecOutput {
     type Storage = Vec<u8>;
 
     #[inline]
@@ -303,11 +304,11 @@ impl<O: Output> Writer<O> {
                 self.val(v);
             },
             Value::CEnum(r, ev) => {
-                self.extvar(H4::CEnum, *ev as u64);
+                self.extvar(H4::CEnum, *ev);
                 self.typeid(r);
             },
             Value::Enum(r, ev, v) => {
-                self.extvar(H4::Enum, *ev as u64);
+                self.extvar(H4::Enum, *ev);
                 self.typeid(r);
                 self.val(v);
             },
