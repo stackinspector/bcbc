@@ -27,8 +27,9 @@ impl From<String> for ByteStr<Vec<u8>> {
 }
 
 #[cfg(feature = "bytes")]
-impl From<&'static str> for ByteStr<Bytes> {
-    /* const */ fn from(value: &'static str) -> Self {
+impl ByteStr<Bytes> {
+    // impl From<&'static str> for ByteStr<Bytes> if not conflict with below
+    pub const fn from_static(value: &'static str) -> Self {
         ByteStr {
             // Invariant: value is a str so contains valid UTF-8.
             bytes: Bytes::from_static(value.as_bytes()),
@@ -36,18 +37,15 @@ impl From<&'static str> for ByteStr<Bytes> {
     }
 }
 
-// conflict with above
-/*
 #[cfg(feature = "bytes")]
 impl<'a> From<&'a str> for ByteStr<Bytes> {
-    /* const */ fn from(value: &'static str) -> Self {
+    fn from(value: &'a str) -> Self {
         ByteStr {
             // Invariant: value is a str so contains valid UTF-8.
             bytes: Bytes::copy_from_slice(value.as_bytes()),
         }
     }
 }
-*/
 
 impl<B: AsRef<[u8]> + ByteStorage> ByteStr<B> {
     // DO NOT impl TryFrom<B> keeping consistency to std
