@@ -1,3 +1,4 @@
+#[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
 // TODO should we make no-panic guarantees like reader::Input ?
@@ -10,11 +11,13 @@ pub trait Output: Default {
     fn leak(self) -> Self::Storage;
 }
 
+#[cfg(feature = "alloc")]
 #[derive(Default)]
 pub struct VecOutput {
     bytes: Vec<u8>,
 }
 
+#[cfg(feature = "alloc")]
 impl Output for VecOutput {
     type Storage = Vec<u8>;
 

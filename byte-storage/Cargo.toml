@@ -13,4 +13,5 @@ path = "lib.rs"
 bytes = { version = "1", default-features = false, optional = true }
 
 [features]
+alloc = []
 bytes = ["dep:bytes"]

@@ -1,5 +1,6 @@
 // TODO impl a more general one outside
 
+#[cfg(feature = "alloc")]
 use alloc::{string::String, vec::Vec};
 use crate::ByteStorage;
 #[cfg(feature = "bytes")]
@@ -21,6 +22,7 @@ impl<'a> From<&'a str> for ByteStr<&'a [u8]> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl From<String> for ByteStr<Vec<u8>> {
     fn from(value: String) -> Self {
         // Invariant: value is a String so contains valid UTF-8.
