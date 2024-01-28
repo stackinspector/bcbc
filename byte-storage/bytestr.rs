@@ -1,10 +1,6 @@
 // TODO impl a more general one outside
 
-#[cfg(feature = "alloc")]
-use alloc::{string::String, vec::Vec};
-use crate::ByteStorage;
-#[cfg(feature = "bytes")]
-use crate::Bytes;
+use crate::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 // currently no need for Default & new()

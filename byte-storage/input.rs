@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 // primitives in this mod should provide the same no-panic guarantees as the crate `untrusted`
 

@@ -1,5 +1,4 @@
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use crate::*;
 
 // TODO should we make no-panic guarantees like reader::Input ?
 // before this, Output does not need to be unsafe
