@@ -135,6 +135,22 @@ pub enum Type {
     TypeId,
 }
 
+/// # Safety
+/// types impl this should provide the same guarantees as string::StableAsRef
+pub unsafe trait ByteStorage {}
+unsafe impl<B: ?Sized + ByteStorage> ByteStorage for &'_ B {}
+unsafe impl ByteStorage for [u8] {}
+unsafe impl ByteStorage for str {}
+unsafe impl<const N: usize> ByteStorage for [u8; N] {}
+unsafe impl ByteStorage for alloc::vec::Vec<u8> {}
+unsafe impl ByteStorage for alloc::string::String {}
+#[cfg(feature = "bytes")]
+unsafe impl ByteStorage for Bytes {}
+unsafe impl ByteStorage for reader::SliceInput<'_> {}
+#[cfg(feature = "bytes")]
+unsafe impl ByteStorage for reader::BytesInput {}
+// types impl Output no need to impl this
+
 mod bytestr;
 pub use bytestr::ByteStr;
 

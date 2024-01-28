@@ -1,11 +1,7 @@
 // TODO impl a more general one outside
 
 use alloc::{string::String, vec::Vec};
-
-// TODO may necessary to impl sth like string::StableAsRef
-// pub unsafe trait ByteStrStorage: AsRef<[u8]> {}
-// should structs impl Input impl this?
-
+use crate::ByteStorage;
 #[cfg(feature = "bytes")]
 use crate::Bytes;
 
@@ -55,8 +51,7 @@ impl<'a> From<&'a str> for ByteStr<Bytes> {
 }
 */
 
-impl<B: AsRef<[u8]>> ByteStr<B> {
-    #[inline]
+impl<B: AsRef<[u8]> + ByteStorage> ByteStr<B> {
     // DO NOT impl TryFrom<B> keeping consistency to std
     // https://internals.rust-lang.org/t/20078/
     pub fn from_utf8(bytes: B) -> Result<Self, core::str::Utf8Error> {
@@ -64,7 +59,6 @@ impl<B: AsRef<[u8]>> ByteStr<B> {
         Ok(ByteStr { bytes })
     }
 
-    #[inline]
     /// ## Panics
     /// In a debug build this will panic if `bytes` is not valid UTF-8.
     ///
@@ -91,7 +85,13 @@ impl<B: AsRef<[u8]>> ByteStr<B> {
     }
 }
 
-impl<B: AsRef<[u8]>> AsRef<str> for ByteStr<B> {
+impl<B: AsRef<[u8]>> AsRef<[u8]> for ByteStr<B> {
+    fn as_ref(&self) -> &[u8] {
+        self.bytes.as_ref()
+    }
+}
+
+impl<B: AsRef<[u8]> + ByteStorage> AsRef<str> for ByteStr<B> {
     fn as_ref(&self) -> &str {
         let b: &[u8] = self.bytes.as_ref();
         // Safety: the invariant of `bytes` is that it contains valid UTF-8.

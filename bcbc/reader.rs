@@ -4,8 +4,8 @@ use super::*;
 // region: primitives that should provide the same no-panic guarantees as the crate `untrusted`
 
 /// # Safety
-/// struct types impl this should provide the same no-panic guarantees as the crate `untrusted`
-pub unsafe trait Input: Sized + From<Self::Storage> {
+/// types impl this should provide the same no-panic guarantees as the crate `untrusted`
+pub unsafe trait Input: Sized + From<Self::Storage> + ByteStorage {
     type Storage: AsRef<[u8]>;
     fn byte(&self, pos: usize) -> Option<&u8>;
     fn bytes(&self, range: core::ops::Range<usize>) -> Option<Self>;
@@ -205,7 +205,7 @@ macro_rules! num_impl {
     )*};
 }
 
-impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
+impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
     #[inline(always)]
     fn u8(&mut self) -> Result<u8> {
         self.read_byte()
@@ -518,7 +518,7 @@ impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
     }
 }
 
-impl<B: AsRef<[u8]>> Value<B> {
+impl<B: AsRef<[u8]> + ByteStorage> Value<B> {
     pub fn decode<I: Input<Storage = B>>(buf: B) -> Result<Value<B>> {
         let mut reader = Reader::<I>::new(buf);
         let val = reader.val()?;
