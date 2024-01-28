@@ -4,7 +4,7 @@ use crate::*;
 // before this, Output does not need to be unsafe
 
 pub trait Output: Default {
-    type Storage;
+    type Storage: ByteStorage; // ?
     fn byte(&mut self, n: u8);
     fn bytes<B: AsRef<[u8]>>(&mut self, bytes: B);
     fn leak(self) -> Self::Storage;

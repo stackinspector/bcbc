@@ -5,7 +5,7 @@ use crate::*;
 /// # Safety
 /// types impl this should provide the same no-panic guarantees as the crate `untrusted`
 pub unsafe trait Input: Sized + From<Self::Storage> + ByteStorage {
-    type Storage: AsRef<[u8]>;
+    type Storage: AsRef<[u8]> + ByteStorage;
     fn byte(&self, pos: usize) -> Option<&u8>;
     fn bytes(&self, range: core::ops::Range<usize>) -> Option<Self>;
     /* const */ fn len(&self) -> usize;

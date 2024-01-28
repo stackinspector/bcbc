@@ -47,9 +47,18 @@ impl<'a> From<&'a str> for ByteStr<Bytes> {
     }
 }
 
+#[cfg(all(feature = "alloc", feature = "bytes"))]
+impl From<String> for ByteStr<Bytes> {
+    fn from(value: String) -> Self {
+        // Invariant: value is a String so contains valid UTF-8.
+        ByteStr { bytes: value.into() }
+    }
+}
+
 impl<B: AsRef<[u8]> + ByteStorage> ByteStr<B> {
     // DO NOT impl TryFrom<B> keeping consistency to std
     // https://internals.rust-lang.org/t/20078/
+    // TODO Result<Self, (B, core::str::Utf8Error)> ?
     pub fn from_utf8(bytes: B) -> Result<Self, core::str::Utf8Error> {
         let _ = core::str::from_utf8(bytes.as_ref())?;
         Ok(ByteStr { bytes })
