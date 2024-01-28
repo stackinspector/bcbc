@@ -38,7 +38,7 @@ impl StdId {
     pub const fn from_inner(schema: u8, id: u16) -> Option<StdId> {
         match schema {
             SCHEMA_ANONYMOUS | SCHEMA_HASH => None,
-            schema => Some(StdId { schema, id })
+            schema => Some(StdId { schema, id }),
         }
     }
 }
@@ -80,15 +80,13 @@ impl ByteRepr for TypeId {
             SCHEMA_HASH => {
                 let hash = bytes[HASH_BEGIN..].try_into().unwrap();
                 TypeId::Hash(HashId { hash })
-            },
-            SCHEMA_ANONYMOUS => {
-                TypeId::Anonymous
-            },
+            }
+            SCHEMA_ANONYMOUS => TypeId::Anonymous,
             schema => {
                 let id = bytes[STD_ID_BEGIN..].try_into().unwrap();
                 let id = u16::from_bytes(id);
                 TypeId::Std(StdId { schema, id })
-            },
+            }
         }
     }
 
@@ -98,11 +96,11 @@ impl ByteRepr for TypeId {
         match self {
             TypeId::Std(std_id) => {
                 bytes[STD_ID_BEGIN..].copy_from_slice(&std_id.id().to_bytes());
-            },
+            }
             TypeId::Hash(hash_id) => {
                 bytes[HASH_BEGIN..].copy_from_slice(&hash_id.hash());
-            },
-            TypeId::Anonymous => {},
+            }
+            TypeId::Anonymous => {}
         }
         bytes
     }

@@ -24,7 +24,7 @@ impl Output for VecOutput {
     fn byte(&mut self, n: u8) {
         self.bytes.push(n);
     }
-    
+
     #[inline]
     fn bytes<B: AsRef<[u8]>>(&mut self, bytes: B) {
         self.bytes.extend_from_slice(bytes.as_ref());

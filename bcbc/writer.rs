@@ -44,64 +44,59 @@ impl<O: Output> Writer<O> {
         match id {
             TypeId::Std(std_id) => {
                 self.u16(std_id.id());
-            },
+            }
             TypeId::Hash(hash_id) => {
                 self.bytes(hash_id.hash());
-            },
-            TypeId::Anonymous => {},
+            }
+            TypeId::Anonymous => {}
         }
     }
 
     fn ty(&mut self, t: &Type) {
         self.u8(t.as_tag() as u8);
         match t {
-            Type::Unknown |
-            Type::Unit |
-            Type::Bool |
-            Type::U8 |
-            Type::U16 |
-            Type::U32 |
-            Type::U64 |
-            Type::I8 |
-            Type::I16 |
-            Type::I32 |
-            Type::I64 |
-            Type::F16 |
-            Type::F32 |
-            Type::F64 |
-            Type::String |
-            Type::Bytes |
-            Type::Type |
-            Type::TypeId => {},
+            Type::Unknown
+            | Type::Unit
+            | Type::Bool
+            | Type::U8
+            | Type::U16
+            | Type::U32
+            | Type::U64
+            | Type::I8
+            | Type::I16
+            | Type::I32
+            | Type::I64
+            | Type::F16
+            | Type::F32
+            | Type::F64
+            | Type::String
+            | Type::Bytes
+            | Type::Type
+            | Type::TypeId => {}
 
-            Type::Option(t) |
-            Type::List(t) => {
+            Type::Option(t)
+            | Type::List(t) => {
                 self.ty(t);
-
-            },
+            }
             Type::Map(tk, tv) => {
                 self.ty(tk);
                 self.ty(tv);
-
-            },
+            }
 
             Type::Tuple(s) => {
                 // should checked in type check
                 self.u8(s.len().try_into().unwrap());
-
                 for t in s.as_ref() {
                     self.ty(t);
                 }
-
             }
 
-            Type::Alias(r) |
-            Type::CEnum(r) |
-            Type::Enum(r) |
-            Type::Struct(r) => {
+            Type::Alias(r)
+            | Type::CEnum(r)
+            | Type::Enum(r)
+            | Type::Struct(r) => {
                 self.typeid(r);
-
-            },
+            }
         }
     }
 
@@ -161,10 +156,16 @@ impl<O: Output> Writer<O> {
                 self.bytes(&buf[$rangefn(len)]);
             };
             (U: $n:expr, $nty:tt, $l4:expr) => {{
-                bytevar_impl!($n, $nty, $l4, casting::bytevar_urange, casting::bytevar_ulen);
+                bytevar_impl!(
+                    $n, $nty, $l4,
+                    casting::bytevar_urange, casting::bytevar_ulen
+                );
             }};
             (F: $n:expr, $nty:tt, $l4:expr) => {{
-                bytevar_impl!($n, $nty, $l4, casting::bytevar_frange, casting::bytevar_flen);
+                bytevar_impl!(
+                    $n, $nty, $l4,
+                    casting::bytevar_frange, casting::bytevar_flen
+                );
             }};
         }
 
@@ -180,10 +181,10 @@ impl<O: Output> Writer<O> {
                 match val {
                     $(Value::$uname(u) => {
                         bytevar_impl!(U: u, $uty, L4::$uname);
-                    })*,
+                    })*
                     $(Value::$i8name(i) => {
                         bytevar_impl!(U: i, $i8uty, L4::$i8name);
-                    })*,
+                    })*
                     $(Value::$iname(i) => {
                         let l4 = if !i.is_negative() {
                             L4::$pname
@@ -192,10 +193,10 @@ impl<O: Output> Writer<O> {
                         };
                         let u = i.unsigned_abs();
                         bytevar_impl!(U: u, $iuty, l4);
-                    })*,
+                    })*
                     $(Value::$fname(f) => {
                         bytevar_impl!(F: f, $fty, L4::$fname);
-                    })*,
+                    })*
                     $($tt)*
                 }
             };

@@ -27,7 +27,6 @@ macro_rules! println {
     ($($tt:tt)*) => {};
 }
 
-
 #[test]
 fn cases() {
     fn case(v: Value<&'static [u8]>, exp: &'static [u8]) {
@@ -72,7 +71,7 @@ fn cases() {
         b2 06 110e
         03 7b     a2 0e 85 68656c6c6f   87 676f6f64627965
         23 0f423f a2 0e 86 7468616e6b73 8b 686f772061726520796f75
-        ")
+        "),
     );
 
     case(
@@ -112,7 +111,7 @@ fn cases() {
         6e 11 11 17 00
         7e ff fedcba98765432
         4e  13 03 0a 01 00  c3 07 09 0e 2e
-        ")
+        "),
     );
 
     fn err_case(exp: &'static [u8], err: Error) {
@@ -122,46 +121,46 @@ fn cases() {
 
     err_case(
         expb!("7a ffffffffffffffff"),
-        Error::BytevarIntSign { buf: [0xff; 8] }
+        Error::BytevarIntSign { buf: [0xff; 8] },
     );
 
     err_case(
         expb!("0e 000000"),
-        Error::Read(ReadError::TooLong { rest: 3 })
+        Error::Read(ReadError::TooLong { rest: 3 }),
     );
 
     err_case(
         expb!("89 426572796c736f66"),
-        Error::Read(ReadError::TooShort { rest: 8, expected: 9 })
+        Error::Read(ReadError::TooShort { rest: 8, expected: 9 }),
     );
 
     err_case(
         expb!("6e ff"),
-        Error::Tag(0xff)
+        Error::Tag(0xff),
     );
 
     err_case(
         expb!("82 ffff"),
-        Error::Utf8(core::str::from_utf8(expb!("ffff")).unwrap_err())
+        Error::Utf8(core::str::from_utf8(expb!("ffff")).unwrap_err()),
     );
 
     err_case(
         expb!("8c 00"),
-        Error::ExtvarTooLong { l4: EXT8, exp_l4: 0u8.try_into().unwrap(), u: 0 }
+        Error::ExtvarTooLong { l4: EXT8, exp_l4: 0u8.try_into().unwrap(), u: 0 },
     );
 
     err_case(
         expb!("21 000001"),
-        Error::BytevarLongerThanType { len: 3, nlen: 2, buf: hex!("00 00 00 00 00 00 00 01") }
+        Error::BytevarLongerThanType { len: 3, nlen: 2, buf: hex!("00 00 00 00 00 00 00 01") },
     );
 
     err_case(
         expb!("11 0001"),
-        Error::BytevarLongerThanExpected { len: 2, nlen: 2, exp_len: 1, buf: hex!("00 00 00 00 00 00 00 01") }
+        Error::BytevarLongerThanExpected { len: 2, nlen: 2, exp_len: 1, buf: hex!("00 00 00 00 00 00 00 01") },
     );
 
     err_case(
         expb!("0a 00"),
-        Error::BytevarNegZero { buf: [0; 8] }
+        Error::BytevarNegZero { buf: [0; 8] },
     )
 }

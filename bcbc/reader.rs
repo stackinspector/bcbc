@@ -74,10 +74,8 @@ impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
             SCHEMA_HASH => {
                 let hash = self.bytes_sized()?;
                 TypeId::Hash(HashId { hash })
-            },
-            SCHEMA_ANONYMOUS => {
-                TypeId::Anonymous
-            },
+            }
+            SCHEMA_ANONYMOUS => TypeId::Anonymous,
             schema => {
                 let id = self.u16()?;
                 TypeId::Std(StdId { schema, id })
@@ -87,7 +85,6 @@ impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
 
     fn ty(&mut self) -> Result<Type> {
         let tag = self.u8()?.try_into()?;
-    
         macro_rules! ty_impl {
             (
                 direct {$($direct_name:ident)*}
@@ -100,7 +97,7 @@ impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
                     $(Tag::$typeid_name => {
                         let r = self.typeid()?;
                         Type::$typeid_name(r)
-                    },)*
+                    })*
                 }
             };
         }
@@ -209,47 +206,47 @@ impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
                 let len = self.extszvar(l4)?;
                 let b = self.bytes(len)?;
                 Value::String(ByteStr::from_utf8(b)?)
-            },
+            }
             H4::Bytes => {
                 let len = self.extszvar(l4)?;
                 let b = self.bytes(len)?;
                 Value::Bytes(b)
-            },
+            }
             H4::List => {
                 let len = self.extszvar(l4)?;
                 let t = self.ty()?;
                 let s = self.val_seq(len)?;
                 Value::List(t, s)
-            },
+            }
             H4::Map => {
                 let len = self.extszvar(l4)?;
                 let tk = self.ty()?;
                 let tv = self.ty()?;
                 let s = self.val_seq_map(len)?;
                 Value::Map((tk, tv), s)
-            },
+            }
             H4::Tuple => {
                 let len = self.extszvar(l4)?;
                 let s = self.val_seq(len)?;
                 Value::Tuple(s)
-            },
+            }
             H4::CEnum => {
                 let ev = self.extvar(l4)?;
                 let r = self.typeid()?;
                 Value::CEnum(r, ev)
-            },
+            }
             H4::Enum => {
                 let ev = self.extvar(l4)?;
                 let r = self.typeid()?;
                 let v = self.val()?;
                 Value::Enum(r, ev, Box::new(v))
-            },
+            }
             H4::Struct => {
                 let len = self.extszvar(l4)?;
                 let r = self.typeid()?;
                 let s = self.val_seq(len)?;
                 Value::Struct(r, s)
-            },
+            }
             h4 => {
                 macro_rules! bytevar_impl {
                     ($nty:tt, $rangefn:expr, $lenfn:expr) => {{
@@ -289,11 +286,11 @@ impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
                             $(L4::$uname => {
                                 let (u, _) = bytevar_impl!(U: $uty);
                                 Value::$uname(u)
-                            })*,
+                            })*
                             $(L4::$i8name => {
                                 let (u, _) = bytevar_impl!(U: $i8ty);
                                 Value::$i8name(u)
-                            })*,
+                            })*
                             $(L4::$pname => {
                                 let (u, buf) = bytevar_impl!(U: $iuty);
                                 let i = u.try_into().map_err(|_| Error::BytevarIntSign { buf })?;
@@ -307,11 +304,11 @@ impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
                                 let i: $ity = u.try_into().map_err(|_| Error::BytevarIntSign { buf })?;
                                 let i = -i; // since from uN cannot be iN::MIN
                                 Value::$iname(i)
-                            })*,
+                            })*
                             $(L4::$fname => {
                                 let (u, _) = bytevar_impl!(F: $fty);
                                 Value::$fname(u)
-                            })*,
+                            })*
                             $($tt)*
                         }
                     };
@@ -354,19 +351,19 @@ impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
                             let r = self.typeid()?;
                             let v = self.val()?;
                             Value::Alias(r, Box::new(v))
-                        },
+                        }
                         Ext1::Type => {
                             let t = self.ty()?;
                             Value::Type(t)
-                        },
+                        }
                         Ext1::TypeId => {
                             let r = self.typeid()?;
                             Value::TypeId(r)
-                        },
-                    },
+                        }
+                    }
                     L4::EXT2 => return Err(Error::Ext2NotImplemented),
                 }
-            },
+            }
         })
     }
 }

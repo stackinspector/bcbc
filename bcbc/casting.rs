@@ -308,7 +308,7 @@ impl<B> Value<B> {
         into_i16 -> i16        | I16
         into_i32 -> i32        | I32
         into_i64 -> i64        | I64
-        // TODO convert? 
+        // TODO convert?
         into_f16 -> u16        | F16
         into_f32 -> u32        | F32
         into_f64 -> u64        | F64

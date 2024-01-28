@@ -122,7 +122,10 @@ pub struct Reader<I> {
 
 impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
     pub fn new(bytes: B) -> Self {
-        Reader { input: bytes.into(), pos: 0 }
+        Reader {
+            input: bytes.into(),
+            pos: 0,
+        }
     }
 
     #[inline(always)]
@@ -146,8 +149,8 @@ impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
                 // safe from overflow; see https://docs.rs/untrusted/0.9.0/src/untrusted/input.rs.html#39-43
                 self.pos += 1;
                 Ok(*b)
-            },
-            None => Err(ReadError::TooShort { rest: 0, expected: 1 })
+            }
+            None => Err(ReadError::TooShort { rest: 0, expected: 1 }),
         }
     }
 

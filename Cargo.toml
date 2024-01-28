@@ -5,3 +5,7 @@ members = [
     "bcbc",
     "bcs-parser",
 ]
+
+# NOTE since this repo, we use the same strategy as rustfmt on `{}` arms in match statements: no trailing commas.
+# other repos & crates should follow up incrementally.
+# TODO rustfmt config
