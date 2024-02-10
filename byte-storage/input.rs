@@ -154,17 +154,22 @@ impl<B: AsRef<[u8]>, I: Input<Storage = B>> Reader<I> {
         }
     }
 
-    pub fn finish(self) -> Result<()> {
+    pub fn finish(self) -> core::result::Result<(), (ReadError, Self)> {
         let rest = self.rest_len();
         if rest == 0 {
             Ok(())
         } else {
-            Err(ReadError::TooLong { rest })
+            Err((ReadError::TooLong { rest }, self))
         }
     }
 
     pub fn into_rest(mut self) -> I {
         self.split_out(self.rest_len()).unwrap()
+    }
+
+    pub fn into_parts(self) -> (I, usize) {
+        let Reader { input, pos } = self;
+        (input, pos)
     }
 }
 

@@ -114,53 +114,62 @@ fn cases() {
         "),
     );
 
-    fn err_case(exp: &'static [u8], err: Error) {
+    fn err_case(exp: &'static [u8], err: Error, pos: usize) {
         let err2 = Value::decode::<SliceInput>(&exp).unwrap_err();
-        assert_eq!(err2, err);
+        assert_eq!(err2, FullError { err, buf: exp, pos });
     }
 
     err_case(
         expb!("7a ffffffffffffffff"),
         Error::BytevarIntSign { buf: [0xff; 8] },
+        9,
     );
 
     err_case(
         expb!("0e 000000"),
         Error::Read(ReadError::TooLong { rest: 3 }),
+        1,
     );
 
     err_case(
         expb!("89 426572796c736f66"),
         Error::Read(ReadError::TooShort { rest: 8, expected: 9 }),
+        1,
     );
 
     err_case(
         expb!("6e ff"),
         Error::Tag(0xff),
+        2,
     );
 
     err_case(
         expb!("82 ffff"),
         Error::Utf8(core::str::from_utf8(expb!("ffff")).unwrap_err()),
+        3,
     );
 
     err_case(
         expb!("8c 00"),
         Error::ExtvarTooLong { l4: EXT8, exp_l4: 0u8.try_into().unwrap(), u: 0 },
+        2,
     );
 
     err_case(
         expb!("21 000001"),
         Error::BytevarLongerThanType { len: 3, nlen: 2, buf: hex!("00 00 00 00 00 00 00 01") },
+        4,
     );
 
     err_case(
         expb!("11 0001"),
         Error::BytevarLongerThanExpected { len: 2, nlen: 2, exp_len: 1, buf: hex!("00 00 00 00 00 00 00 01") },
+        3,
     );
 
     err_case(
         expb!("0a 00"),
         Error::BytevarNegZero { buf: [0; 8] },
-    )
+        2,
+    );
 }

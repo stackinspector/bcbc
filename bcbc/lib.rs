@@ -185,6 +185,13 @@ pub trait Schema {
 // TODO temp solution
 pub const SIZE_MAX: usize = u16::MAX as usize;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FullError<B> {
+    pub err: Error,
+    pub buf: B,
+    pub pos: usize,
+}
+
 error_enum! {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub enum Error {
@@ -221,6 +228,7 @@ pub enum Fatal {
 
 // TODO: use uniform Error like serde_json?
 type Result<T> = core::result::Result<T, Error>;
+type FullResult<T, B> = core::result::Result<T, FullError<B>>;
 type FatalResult<T> = core::result::Result<T, Fatal>;
 
 pub mod casting;

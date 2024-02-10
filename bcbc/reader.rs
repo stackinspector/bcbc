@@ -25,13 +25,18 @@ impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
     }
 
     #[inline(always)]
-    pub fn finish(self) -> Result<()> {
-        Ok(self.inner.finish()?)
+    pub fn finish(self) -> core::result::Result<(), (ReadError, byte_storage::Reader<I>)> {
+        self.inner.finish()
     }
 
     #[inline(always)]
     pub fn into_rest(self) -> I {
         self.inner.into_rest()
+    }
+
+    #[inline(always)]
+    pub fn into_parts(self) -> (I, usize) {
+        self.inner.into_parts()
     }
 
     #[inline(always)]
@@ -59,6 +64,26 @@ macro_rules! num_impl {
 }
 
 impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
+    fn finish_with<T>(self, res: Result<T>) -> FullResult<T, B> {
+        match res {
+            Ok(val) => {
+                match self.finish() {
+                    Ok(()) => Ok(val),
+                    Err((err, reader)) => {
+                        let (input, pos) = reader.into_parts();
+                        let buf = input.leak();
+                        Err(FullError { err: err.into(), buf, pos })
+                    }
+                }
+            },
+            Err(err) => {
+                let (input, pos) = self.into_parts();
+                let buf = input.leak();
+                Err(FullError { err, buf, pos })
+            }
+        }
+    }
+
     #[inline(always)]
     fn u8(&mut self) -> Result<u8> {
         self.read_byte()
@@ -369,13 +394,13 @@ impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
 }
 
 impl<B: AsRef<[u8]> + ByteStorage> Value<B> {
-    pub fn decode<I: Input<Storage = B>>(buf: B) -> Result<Value<B>> {
+    pub fn decode<I: Input<Storage = B>>(buf: B) -> FullResult<Value<B>, B> {
         let mut reader = Reader::<I>::new(buf);
-        let val = reader.val()?;
-        reader.finish()?;
-        Ok(val)
+        let val = reader.val();
+        reader.finish_with(val)
     }
 
+    // cannot return FullResult
     pub fn decode_first_value<I: Input<Storage = B>>(buf: B) -> (Result<Value<B>>, B) {
         let mut reader = Reader::<I>::new(buf);
         let res = reader.val();
