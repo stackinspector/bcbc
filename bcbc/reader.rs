@@ -211,6 +211,7 @@ impl<B: AsRef<[u8]> + ByteStorage, I: Input<Storage = B>> Reader<I> {
         }
     }
 
+    // TODO Iterator
     fn val_seq(&mut self, size: usize) -> Result<Box<[Value<B>]>> {
         alloc_seq(size, |_| self.val())
     }

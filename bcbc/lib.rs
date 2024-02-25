@@ -136,6 +136,8 @@ pub enum Type {
 }
 
 // TODO impl<B1: PartialEq<B2>, B2> PartialEq&PartialOrd<Value<B2>> for Value<B1>
+// TODO variant structs?
+// TODO no value & matching r&w api
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Value<B> {
     Unit,

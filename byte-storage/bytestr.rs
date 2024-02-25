@@ -11,6 +11,17 @@ pub struct ByteStr<B> {
     bytes: B,
 }
 
+// TODO(std) impl<'a> From<&'a str> for &'a [u8]
+/*
+impl<'a, B: From<&'a str> + ByteStorage> From<&'a str> for ByteStr<B> {
+    fn from(value: &'a str) -> Self {
+        // Invariant: value is a str so contains valid UTF-8.
+        ByteStr { bytes: value.into() }
+    }
+}
+*/
+
+// remove when generic impl feasible
 impl<'a> From<&'a str> for ByteStr<&'a [u8]> {
     fn from(value: &'a str) -> Self {
         // Invariant: value is a str so contains valid UTF-8.
@@ -26,22 +37,26 @@ impl From<String> for ByteStr<Vec<u8>> {
     }
 }
 
+// remove when generic impl feasible
 #[cfg(feature = "bytes")]
 impl ByteStr<Bytes> {
     // impl From<&'static str> for ByteStr<Bytes> if not conflict with below
     pub const fn from_static(value: &'static str) -> Self {
         ByteStr {
             // Invariant: value is a str so contains valid UTF-8.
+            // bytes: Bytes::from(value), // no const trait fn
             bytes: Bytes::from_static(value.as_bytes()),
         }
     }
 }
 
+// remove when generic impl feasible
 #[cfg(feature = "bytes")]
 impl<'a> From<&'a str> for ByteStr<Bytes> {
     fn from(value: &'a str) -> Self {
         ByteStr {
             // Invariant: value is a str so contains valid UTF-8.
+            // bytes: Bytes::from(value), // not impled? what about below tests?
             bytes: Bytes::copy_from_slice(value.as_bytes()),
         }
     }
@@ -88,4 +103,25 @@ impl<B> ByteStr<B> {
     pub fn map_bytes<B2>(self, f: fn(B) -> B2) -> ByteStr<B2> {
         ByteStr { bytes: f(self.bytes) }
     }
+}
+
+#[test]
+const fn test() {
+    trait AssertImpl { const ASSERT: () = (); }
+
+    struct A<T>(T);
+    impl<'a, T: From<&'a str>> AssertImpl for A<T> { const ASSERT: () = (); }
+    // let _ = A::<&[u8]>::ASSERT;
+    let _ = A::<Vec<u8>>::ASSERT;
+    // let _ = A::<Box<[u8]>>::ASSERT;
+    let _ = A::<Bytes>::ASSERT;
+    let _ = A::<ByteStr<&[u8]>>::ASSERT;
+    let _ = A::<ByteStr<Bytes>>::ASSERT;
+
+    struct B<T>(T);
+    impl<T: From<&'static str>> AssertImpl for B<T> { const ASSERT: () = (); }
+    // let _ = B::<&'static [u8]>::ASSERT;
+    let _ = B::<Bytes>::ASSERT;
+    let _ = B::<ByteStr<&'static [u8]>>::ASSERT;
+    let _ = B::<ByteStr<Bytes>>::ASSERT;
 }

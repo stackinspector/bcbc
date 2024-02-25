@@ -132,6 +132,7 @@ impl<O: Output> Writer<O> {
         self.extvar(h4, sz.try_into().map_err(|_| Fatal::FromSize(sz)).unwrap())
     }
 
+    // TODO recv Iterator
     fn val_seq<B: AsRef<[u8]>>(&mut self, s: &[Value<B>]) {
         for v in s {
             self.val(v);
